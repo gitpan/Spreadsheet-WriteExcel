@@ -37,14 +37,15 @@ WriteExcel/doc/win32ole.gif
 
 
 
-WriteExcel/examples/README.txt
-WriteExcel/examples/regions.pl
+WriteExcel/examples/README
 WriteExcel/examples/bigfile.pl
 WriteExcel/examples/cgi.pl
 WriteExcel/examples/comments.pl
+WriteExcel/examples/convertA1.pl
 WriteExcel/examples/copyformat.pl
 WriteExcel/examples/csv2xls.pl
 WriteExcel/examples/easter_egg.pl
+WriteExcel/examples/filehandle.pl
 WriteExcel/examples/formats.pl
 WriteExcel/examples/function_locale.pl
 WriteExcel/examples/hyperlink.pl
@@ -52,18 +53,17 @@ WriteExcel/examples/merge1.pl
 WriteExcel/examples/merge2.pl
 WriteExcel/examples/mod_perl.pl
 WriteExcel/examples/ms_time.pl
-WriteExcel/examples/convertA1.pl
+WriteExcel/examples/panes.pl
+WriteExcel/examples/regions.pl
 WriteExcel/examples/simple.pl
 WriteExcel/examples/stats.pl
+WriteExcel/examples/stats_ext.pl
 WriteExcel/examples/stocks.pl
 WriteExcel/examples/tab2xls.pl
 WriteExcel/examples/textwrap.pl
 WriteExcel/examples/win32ole.pl
 WriteExcel/examples/writeA1.pl
 WriteExcel/examples/writemany.pl
-WriteExcel/examples/stats_ext.pl
-WriteExcel/examples/filehandle.pl
-WriteExcel/examples/function_locale.pl
 WriteExcel/examples/Big.pm
 WriteExcel/examples/WorkbookBig.pm
 

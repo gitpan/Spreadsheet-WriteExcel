@@ -55,6 +55,13 @@ SYNOPSIS
         $worksheet->write('A4', '=SIN(PI()/4)');
 
 ======================================================================
+REQUIREMENTS
+
+    This module requires Perl 5.005 (or later) and Parse::RecDescent:
+    http://search.cpan.org/search?dist=Parse-RecDescent
+
+
+======================================================================
 INSTALLATION
 
     Method 1
@@ -100,13 +107,6 @@ INSTALLATION
         http://homepage.eircom.net/~jmcnamara/perl/Spreadsheet-WriteExcel.ppd
         http://homepage.eircom.net/~jmcnamara/perl/Spreadsheet-WriteExcel-0.xx-PPM.tar.gz
 
-
-
-======================================================================
-REQUIREMENTS
-
-    This module requires Perl 5.005 (or later) and Parse::RecDescent:
-    http://search.cpan.org/search?dist=Parse-RecDescent
 
 
 ======================================================================
