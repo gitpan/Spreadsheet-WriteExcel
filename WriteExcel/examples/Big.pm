@@ -2,12 +2,8 @@ package Spreadsheet::WriteExcel::Big;
 
 ###############################################################################
 #
-# Used in conjuction with the big.pl program. Change the extension to .pm
-# and copy the file to the Spreadsheet/WriteExcel directory.
+# Used in conjunction with the big.pl program.
 #
-
-
-###############################################################################
 #
 # Example of how to use extend the  Spreadsheet::WriteExcel 7MB limit with
 # OLE::Storage_Lite http://search.cpan.org/search?dist=OLE-Storage_Lite
@@ -26,7 +22,6 @@ package Spreadsheet::WriteExcel::Big;
 #
 # Copyright 2000, John McNamara, jmcnamara@cpan.org
 #
-# Documentation after __END__
 #
 
 require Exporter;
@@ -67,3 +62,37 @@ sub new {
 
 
 __END__
+
+
+
+=head1 NAME
+
+
+Big - A class for creating Excel files > 7MB.
+
+
+=head1 SYNOPSIS
+
+
+See the documentation for Spreadsheet::WriteExcel.
+
+
+=head1 DESCRIPTION
+
+
+This module is used in conjunction with Spreadsheet::WriteExcel.
+
+
+=head1 AUTHOR
+
+
+John McNamara jmcnamara@cpan.org
+
+
+=head1 COPYRIGHT
+
+
+© MM-MMI, John McNamara.
+
+
+All Rights Reserved. This module is free software. It may be used, redistributed and/or modified under the same terms as Perl itself.
