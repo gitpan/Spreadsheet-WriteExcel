@@ -1,10 +1,10 @@
-name:         Spreadsheet-WriteExcel
-version:      2.14
-version_from: lib/Spreadsheet/WriteExcel.pm
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         Spreadsheet-WriteExcel-WebPivot
+version:      0.01
+version_from: lib/Spreadsheet/WriteExcel/WebPivot.pm
 installdirs:  site
 requires:
-    File::Temp:                    0
-    Parse::RecDescent:             0
 
 distribution_type: module
-generated_by: hand
+generated_by: ExtUtils::MakeMaker version 6.21
