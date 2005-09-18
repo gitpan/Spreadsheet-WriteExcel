@@ -1,12 +1,17 @@
-use 5.008003;
 use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+
+# perl 5.005 is required for qr() support in Parse::RecDescent.
+# There are also some 4 arg substr()'s in WriteExcel.
+#
+require 5.005;
+
 WriteMakefile(
-    NAME              => 'Spreadsheet::WriteExcel::WebPivot',
-    VERSION_FROM      => 'lib/Spreadsheet/WriteExcel/WebPivot.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Spreadsheet/WriteExcel/WebPivot.pm', # retrieve abstract from module
-       AUTHOR         => 'Nathan Lewis <nathanlewis@local>') : ()),
+    'AUTHOR'        => 'John McNamara (jmcnamara@cpan.org)',
+    'ABSTRACT'      => 'Write to a cross platform Excel binary file',
+    'NAME'          => 'Spreadsheet::WriteExcel',
+    'VERSION_FROM'  => 'lib/Spreadsheet/WriteExcel.pm',
+    'NEEDS_LINKING' => 0,
+    'PREREQ_PM'     => {Parse::RecDescent => 0, File::Temp => 0},
+    'dist'          => {COMPRESS => 'gzip --best', SUFFIX => 'gz'},
+    'EXE_FILES'     => ['bin/chartex'],
 );
