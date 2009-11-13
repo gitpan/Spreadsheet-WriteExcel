@@ -6,7 +6,7 @@ package Spreadsheet::WriteExcel;
 #
 # Spreadsheet::WriteExcel - Write to a cross-platform Excel binary file.
 #
-# Copyright 2000-2008, John McNamara, jmcnamara@cpan.org
+# Copyright 2000-2009, John McNamara, jmcnamara@cpan.org
 #
 # Documentation after __END__
 #
@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Workbook;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Workbook Exporter);
 
-$VERSION = '2.25'; # La piccola alla scuola un'altra settimana.
+$VERSION = '2.26'; # Fleet foxes.
 
 
 
@@ -64,7 +64,7 @@ Spreadsheet::WriteExcel - Write to a cross-platform Excel binary file.
 
 =head1 VERSION
 
-This document refers to version 2.25 of Spreadsheet::WriteExcel, released September 9, 2008.
+This document refers to version 2.26 of Spreadsheet::WriteExcel, released November 13, 2009.
 
 
 
@@ -148,6 +148,7 @@ The Spreadsheet::WriteExcel module provides an object oriented interface to a ne
     close()
     compatibility_mode()
     set_properties()
+    define_name()
     set_tempdir()
     set_custom_color()
     sheets()
@@ -407,6 +408,22 @@ This feature requires that the C<OLE::Storage_Lite> module is installed (which i
 For convenience it is possible to pass either a hash or hash ref of arguments to this method.
 
 See also the C<properties.pl> program in the examples directory of the distro.
+
+
+
+
+=head2 define_name()
+
+This method is used to defined a name that can be used to represent a value, a single cell or a range of cells in a workbook.
+
+    $workbook->define_name('Exchange_rate', '=0.96');
+    $workbook->define_name('Sales',         '=Sheet1!$G$1:$H$10');
+    $workbook->define_name('Sheet2!Sales',  '=Sheet2!$G$1:$G$10');
+
+See the defined_name.pl program in the examples dir of the distro.
+
+Note: This currently a beta feature. More documentation and examples will be added.
+
 
 
 
@@ -4723,6 +4740,7 @@ different features and options of the module.
     comments2.pl            Add comments with advanced options.
     copyformat.pl           Example of copying a cell format.
     data_validate.pl        An example of data validation and dropdown lists.
+    defined_name.pl         Example of how to create defined names.
     diag_border.pl          A simple example of diagonal cell borders.
     easter_egg.pl           Expose the Excel97 flight simulator. A must see.
     filehandle.pl           Examples of working with filehandles.
@@ -5279,33 +5297,22 @@ Either the Perl Artistic Licence http://dev.perl.org/licenses/artistic.html or t
 John McNamara jmcnamara@cpan.org
 
 
-    I don't want to get over you
+    The door slammed loud and rose up a cloud of dust, on us.
+    Footsteps follow, down through the hollow sound, torn up.
 
-    I guess I could take a sleeping pill
-    And sleep at will
-    And not have to go through
-    What I go through
+    And you will go to Mykonos,
+    With a vision of a gentle coast,
+    And a sun to maybe dissipate,
+    Shadows of the mess you made.
 
-    I guess I should take Prozac, right?
-    And just smile all night
-    At somebody new
-
-    Somebody not too bright
-    But sweet and kind
-    Who would try to get you off my mind
-    I could leave this agony behind
-    Which is just what I'd do
-    If I wanted to
-    But I don't want to get over you
-
-        -- Stephin Merritt
+        -- Robin Pecknold
 
 
 
 
 =head1 COPYRIGHT
 
-Copyright MM-MMVIII, John McNamara.
+Copyright MM-MMIX, John McNamara.
 
 All Rights Reserved. This module is free software. It may be used, redistributed and/or modified under the same terms as Perl itself.
 
