@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Spreadsheet-WriteExcel
-version:            2.26
+version:            2.27
 abstract:           Write to a cross platform Excel binary file
 author:
     - John McNamara (jmcnamara@cpan.org)
@@ -14,6 +14,9 @@ requires:
     File::Temp:         0
     OLE::Storage_Lite:  0.14
     Parse::RecDescent:  0
+resources:
+    MailingList:  http://groups.google.com/group/spreadsheet-writeexcel
+    repository:   http://github.com/jmcnamara/spreadsheet-writeexcel
 no_index:
     directory:
         - t
