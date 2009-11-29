@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Workbook;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Workbook Exporter);
 
-$VERSION = '2.29'; # Fleet foxes.
+$VERSION = '2.30'; # Fleet foxes.
 
 
 
@@ -64,7 +64,7 @@ Spreadsheet::WriteExcel - Write to a cross-platform Excel binary file.
 
 =head1 VERSION
 
-This document refers to version 2.29 of Spreadsheet::WriteExcel, released November 25, 2009.
+This document refers to version 2.30 of Spreadsheet::WriteExcel, released November 29, 2009.
 
 
 
@@ -3081,7 +3081,7 @@ The colour format should have one of the following values:
 
 Alternatively you can specify the colour based on a colour index as follows: C<[Color n]>, where n is a standard Excel colour index - 7. See the 'Standard colors' worksheet created by formats.pl.
 
-For more information refer to the documentation on formatting in the C<doc> directory of the Spreadsheet::WriteExcel distro, the Excel on-line help or L<http://office.microsoft.com/en-gb/assistance/HP051995001033.aspx>.
+For more information refer to the documentation on formatting in the C<docs> directory of the Spreadsheet::WriteExcel distro, the Excel on-line help or L<http://office.microsoft.com/en-gb/assistance/HP051995001033.aspx>.
 
 You should ensure that the format string is valid in Excel prior to using it in WriteExcel.
 
@@ -3127,7 +3127,7 @@ Excel's built-in formats are shown in the following table:
     49      0x31    @
 
 
-For examples of these formatting codes see the 'Numerical formats' worksheet created by formats.pl. See also the number_formats1.html and the number_formats2.html documents in the C<doc> directory of the distro.
+For examples of these formatting codes see the 'Numerical formats' worksheet created by formats.pl. See also the number_formats1.html and the number_formats2.html documents in the C<docs> directory of the distro.
 
 Note 1. Numeric formats 23 to 36 are not documented by Microsoft and may differ in international versions.
 
@@ -3590,9 +3590,9 @@ If the default palette does not provide a required colour you can override one o
 
     $worksheet->write_blank('A1', $format);
 
-The default Excel 97 colour palette is shown in C<palette.html> in the C<doc> directory  of the distro. You can generate an Excel version of the palette using C<colors.pl> in the C<examples> directory.
+The default Excel 97 colour palette is shown in C<palette.html> in the C<docs> directory  of the distro. You can generate an Excel version of the palette using C<colors.pl> in the C<examples> directory.
 
-A comparison of the colour components in the Excel 5 and Excel 97+ colour palettes is shown in C<rgb5-97.txt> in the C<doc> directory.
+A comparison of the colour components in the Excel 5 and Excel 97+ colour palettes is shown in C<rgb5-97.txt> in the C<docs> directory.
 
 
 You may also find the following links helpful:
@@ -4487,6 +4487,13 @@ The following example shows some of the basic features of Spreadsheet::WriteExce
     $worksheet->write(10, 0, 'http://www.perl.com/');
 
 
+=begin html
+
+<p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/a_simple.jpg" width="640" height="599" alt="Output from a_simple.pl" /></center></p>
+
+=end html
+
+
 
 
 =head2 Example 2
@@ -4531,6 +4538,13 @@ The following is a general example which demonstrates some features of working w
 
     # Set the active cell
     $south->set_selection(0, 1);
+
+
+=begin html
+
+<p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/regions.jpg" width="640" height="599" alt="Output from regions.pl" /></center></p>
+
+=end html
 
 
 
@@ -4603,6 +4617,13 @@ This example shows how to use a conditional numerical format with colours to ind
     $worksheet->write(3, 3, 0,        $f_change); # 0 in the font color (black)
 
 
+=begin html
+
+<p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/stocks.jpg" width="640" height="599" alt="Output from stocks.pl" /></center></p>
+
+=end html
+
+
 
 
 =head2 Example 4
@@ -4669,6 +4690,14 @@ The following is a simple example of using functions.
 
     $worksheet->write(10, 0, 'Kurtosis', $format);
     $worksheet->write(10, 1, '=KURT(B2:I2)');
+
+
+=begin html
+
+<p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/stats.jpg" width="640" height="599" alt="Output from stats.pl" /></center></p>
+
+=end html
+
 
 
 
@@ -4813,7 +4842,6 @@ See L<Spreadsheet::WriteExcel::Examples> for more details.
     convertA1.pl            Helper functions for dealing with A1 notation.
     function_locale.pl      Add non-English function names to Formula.pm.
     writeA1.pl              Example of how to extend the module.
-    gen_examples_pod.pl     Generate the S::WE::Examples.pm doc.
 
 
 
@@ -4855,7 +4883,7 @@ Note, these aren't strict requirements. Spreadsheet::WriteExcel will work withou
 
 =head1 INSTALLATION
 
-See the INSTALL or install.html docs that come with the distribution or: L<http://search.cpan.org/src/JMCNAMARA/Spreadsheet-WriteExcel-2.29/INSTALL>.
+See the INSTALL or install.html docs that come with the distribution or: L<http://search.cpan.org/src/JMCNAMARA/Spreadsheet-WriteExcel-2.30/INSTALL>.
 
 
 
