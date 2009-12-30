@@ -24,7 +24,7 @@ use Spreadsheet::WriteExcel::Properties ':property_sets';
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::BIFFwriter Exporter);
 
-$VERSION = '2.31';
+$VERSION = '2.32';
 
 ###############################################################################
 #
@@ -275,7 +275,7 @@ sub _get_checksum_method {
 
 ###############################################################################
 #
-# _append(), overloaded.
+# _append(), overridden.
 #
 # Store Worksheet data in memory using the base class _append() or to a
 # temporary file, the default.
@@ -463,6 +463,49 @@ sub add_worksheet {
 
 ###############################################################################
 #
+# add_chart(%args)
+#
+# Add a chart sheet.
+#
+#
+sub add_chart {
+
+    my $self  = shift;
+    my %arg   = @_;
+    my $index = @{ $self->{_worksheets} };
+
+    my ( $name, $encoding ) = $self->_check_sheetname(
+                                                      $arg{name},
+                                                      $arg{name_encoding},
+                                                     );
+    my $type = $arg{type}; # TODO. Add checks
+
+    my @init_data = (
+                         $name,
+                         $index,
+                         $encoding,
+                        \$self->{_activesheet},
+                        \$self->{_firstsheet},
+                         $self->{_url_format},
+                         $self->{_parser},
+                         $self->{_tempdir},
+                        \$self->{_str_total},
+                        \$self->{_str_unique},
+                        \$self->{_str_table},
+                         $self->{_1904},
+                         $self->{_compatibility},
+                    );
+
+    my $chart = Spreadsheet::WriteExcel::Chart->factory($type, @init_data);
+    $self->{_worksheets}->[$index] = $chart;         # Store ref for iterator
+    $self->{_sheetnames}->[$index] = $name;          # Store EXTERNSHEET names
+
+    return $chart;
+}
+
+
+###############################################################################
+#
 # add_chart_ext($filename, $name)
 #
 # Add an externally created chart.
@@ -473,6 +516,7 @@ sub add_chart_ext {
     my $self     = shift;
     my $filename = $_[0];
     my $index    = @{$self->{_worksheets}};
+    my $type     = 'external';
 
     my ($name, $encoding) = $self->_check_sheetname($_[1], $_[2]);
 
@@ -486,11 +530,11 @@ sub add_chart_ext {
                         \$self->{_firstsheet},
                     );
 
-    my $worksheet = Spreadsheet::WriteExcel::Chart->new(@init_data);
-    $self->{_worksheets}->[$index] = $worksheet;     # Store ref for iterator
+    my $chart = Spreadsheet::WriteExcel::Chart->factory($type, @init_data);
+    $self->{_worksheets}->[$index] = $chart;         # Store ref for iterator
     $self->{_sheetnames}->[$index] = $name;          # Store EXTERNSHEET names
-    $self->{_parser}->set_ext_sheets($name, $index); # Store names in Formula.pm
-    return $worksheet;
+
+    return $chart;
 }
 
 
@@ -1159,7 +1203,7 @@ sub _store_workbook {
     foreach my $sheet (@{$self->{_worksheets}}) {
         $self->_store_boundsheet($sheet->{_name},
                                  $sheet->{_offset},
-                                 $sheet->{_type},
+                                 $sheet->{_sheet_type},
                                  $sheet->{_hidden},
                                  $sheet->{_encoding});
     }
@@ -1372,7 +1416,7 @@ sub _calc_mso_sizes {
     # required by each worksheet.
     #
     foreach my $sheet (@{$self->{_worksheets}}) {
-        next unless ref $sheet eq "Spreadsheet::WriteExcel::Worksheet";
+        next unless $sheet->{_sheet_type} == 0x0000; # Ignore charts.
 
         my $num_images     = $sheet->{_num_images} || 0;
         my $image_mso_size = $sheet->{_image_mso_size} || 0;
@@ -1460,7 +1504,7 @@ sub _process_images {
 
 
     foreach my $sheet (@{$self->{_worksheets}}) {
-        next unless $sheet->isa('Spreadsheet::WriteExcel::Worksheet');
+        next unless $sheet->{_sheet_type} == 0x0000; # Ignore charts.
         next unless $sheet->_prepare_images();
 
         my $num_images      = 0;
@@ -1756,17 +1800,55 @@ sub _store_all_fonts {
     my $font    = $format->get_font();
 
     # Fonts are 0-indexed. According to the SDK there is no index 4,
-    for (0..3){
+    for (0..3) {
         $self->_append($font);
     }
 
 
-    # Add the font for comments. This isn't connected to any XF format.
-    my $tmp    = Spreadsheet::WriteExcel::Format->new(undef,
-                                                      font => 'Tahoma',
-                                                      size => 8);
-    $font      = $tmp->get_font();
-    $self->_append($font);
+    # Add the default fonts for charts and comments. This aren't connected
+    # to XF formats. Note, the font size, and some other properties of
+    # chart fonts are set in the FBI record of the chart.
+    my $tmp_format;
+
+    # Index 5. Axis numbers.
+    $tmp_format = Spreadsheet::WriteExcel::Format->new(
+        undef,
+        font_only => 1,
+    );
+    $self->_append( $tmp_format->get_font() );
+
+    # Index 6. Series names.
+    $tmp_format = Spreadsheet::WriteExcel::Format->new(
+        undef,
+        font_only => 1,
+        bold      => 1,
+    );
+    $self->_append( $tmp_format->get_font() );
+
+    # Index 7. Title.
+    $tmp_format = Spreadsheet::WriteExcel::Format->new(
+        undef,
+        font_only => 1,
+        bold      => 1,
+    );
+    $self->_append( $tmp_format->get_font() );
+
+    # Index 8. Axes.
+    $tmp_format = Spreadsheet::WriteExcel::Format->new(
+        undef,
+        font_only => 1,
+        bold      => 1,
+    );
+    $self->_append( $tmp_format->get_font() );
+
+    # Index 9. Comments.
+    $tmp_format = Spreadsheet::WriteExcel::Format->new(
+        undef,
+        font_only => 1,
+        font      => 'Tahoma',
+        size      => 8,
+    );
+    $self->_append( $tmp_format->get_font() );
 
 
     # Iterate through the XF objects and write a FONT record if it isn't the
@@ -1774,7 +1856,7 @@ sub _store_all_fonts {
     #
     my %fonts;
     my $key;
-    my $index = 6;                  # The first user defined FONT
+    my $index = 10;                  # The first user defined FONT
 
     $key = $format->get_font_key(); # The default font for cell formats.
     $fonts{$key} = 0;               # Index of the default font

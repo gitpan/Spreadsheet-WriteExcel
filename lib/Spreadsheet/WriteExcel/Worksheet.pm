@@ -24,7 +24,7 @@ use Spreadsheet::WriteExcel::Formula;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::BIFFwriter);
 
-$VERSION = '2.31';
+$VERSION = '2.32';
 
 ###############################################################################
 #
@@ -55,7 +55,7 @@ sub new {
     $self->{_1904}                = $_[11];
     $self->{_compatibility}       = $_[12];
 
-    $self->{_type}                = 0x0000;
+    $self->{_sheet_type}          = 0x0000;
     $self->{_ext_sheets}          = [];
     $self->{_using_tmpfile}       = 1;
     $self->{_filehandle}          = "";
@@ -259,8 +259,6 @@ sub _initialize {
 sub _close {
 
     my $self = shift;
-    my $sheetnames = shift;
-    my $num_sheets = scalar @$sheetnames;
 
     ################################################
     # Prepend in reverse order!!
@@ -1827,7 +1825,7 @@ sub _XF {
 
 ###############################################################################
 #
-# _append(), overloaded.
+# _append(), overridden.
 #
 # Store Worksheet data in memory using the base class _append() or to a
 # temporary file, the default.
@@ -6012,7 +6010,7 @@ sub _store_comments {
         my @vertices    = @{$comments[$i]->[8]};
         my $str_len     = length $str;
            $str_len    /= 2 if $encoding; # Num of chars not bytes.
-        my $formats     = [[0, 5], [$str_len, 0]];
+        my $formats     = [[0, 9], [$str_len, 0]];
 
 
         if ($i == 0 and not $num_objects) {
