@@ -8,7 +8,7 @@ package Spreadsheet::WriteExcel::Chart::Column;
 #
 # See formatting note in Spreadsheet::WriteExcel::Chart.
 #
-# Copyright 2000-2009, John McNamara, jmcnamara@cpan.org
+# Copyright 2000-2010, John McNamara, jmcnamara@cpan.org
 #
 # Documentation after __END__
 #
@@ -22,7 +22,7 @@ use Spreadsheet::WriteExcel::Chart;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Chart Exporter);
 
-$VERSION = '2.32';
+$VERSION = '2.33';
 
 ###############################################################################
 #
@@ -89,7 +89,7 @@ To create a simple Excel file with a Column chart using Spreadsheet::WriteExcel:
     my $workbook  = Spreadsheet::WriteExcel->new( 'chart.xls' );
     my $worksheet = $workbook->add_worksheet();
 
-    my $chart     = $workbook->add_chart( name => 'Chart1', type => 'column' );
+    my $chart     = $workbook->add_chart( type => 'column' );
 
     # Configure the chart.
     $chart->add_series(
@@ -111,7 +111,7 @@ To create a simple Excel file with a Column chart using Spreadsheet::WriteExcel:
 
 This module implements Column charts for L<Spreadsheet::WriteExcel>. The chart object is created via the Workbook C<add_chart()> method:
 
-    my $chart = $workbook->add_chart( name => 'Chart1', type => 'column' );
+    my $chart = $workbook->add_chart( type => 'column' );
 
 Once the object is created it can be configured via the following methods that are common to all chart classes:
 
@@ -132,7 +132,7 @@ John McNamara jmcnamara@cpan.org
 
 =head1 COPYRIGHT
 
-Copyright MM-MMIX, John McNamara.
+Copyright MM-MMX, John McNamara.
 
 All Rights Reserved. This module is free software. It may be used, redistributed and/or modified under the same terms as Perl itself.
 

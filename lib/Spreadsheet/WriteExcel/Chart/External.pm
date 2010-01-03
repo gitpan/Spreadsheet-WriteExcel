@@ -8,7 +8,7 @@ package Spreadsheet::WriteExcel::Chart::External;
 #
 # perltidy with options: -mbl=2 -pt=0 -nola
 #
-# Copyright 2000-2009, John McNamara, jmcnamara@cpan.org
+# Copyright 2000-2010, John McNamara, jmcnamara@cpan.org
 #
 # Documentation after __END__
 #
@@ -22,7 +22,7 @@ use Spreadsheet::WriteExcel::Chart;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Chart Exporter);
 
-$VERSION = '2.32';
+$VERSION = '2.33';
 
 ###############################################################################
 #
@@ -96,11 +96,16 @@ External - A writer class for Excel external charts.
 
 =head1 SYNOPSIS
 
-See the documentation for Spreadsheet::WriteExcel::Chart
+This module is used to include external charts in Spreadsheet::WriteExcel.
 
 =head1 DESCRIPTION
 
-This module is used in conjunction with Spreadsheet::WriteExcel.
+This module is used to include external charts in L<Spreadsheet::WriteExcel>. It is an internal module and isn't used directly by the end user.
+
+It is semi-deprecated in favour of using "native" charts. See L<Spreadsheet::WriteExcel::Chart>.
+
+For information on how to used external charts see the C<external_charts.txt>  (or C<.pod>) in the C<external_charts> directory of the distro.
+
 
 =head1 AUTHOR
 
@@ -108,7 +113,7 @@ John McNamara jmcnamara@cpan.org
 
 =head1 COPYRIGHT
 
-Copyright MM-MMIX, John McNamara.
+Copyright MM-MMX, John McNamara.
 
 All Rights Reserved. This module is free software. It may be used, redistributed and/or modified under the same terms as Perl itself.
 

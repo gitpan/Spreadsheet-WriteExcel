@@ -6,7 +6,7 @@ package Spreadsheet::WriteExcel;
 #
 # Spreadsheet::WriteExcel - Write to a cross-platform Excel binary file.
 #
-# Copyright 2000-2009, John McNamara, jmcnamara@cpan.org
+# Copyright 2000-2010, John McNamara, jmcnamara@cpan.org
 #
 # Documentation after __END__
 #
@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Workbook;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Workbook Exporter);
 
-$VERSION = '2.32'; # The Life Pursuit
+$VERSION = '2.33'; # The Life Pursuit
 
 
 
@@ -287,18 +287,52 @@ See the L<CELL FORMATTING> section for more details about Format properties and 
 
 
 
-=head2 add_chart( name => $name, type => $type )
+=head2 add_chart(%properties)
 
-This method is use to create a new chart sheet.
+This method is use to create a new chart either as a standalone worksheet (the default) or as an embeddable object that can be inserted into a worksheet via the C<insert_chart()> Worksheet method.
 
-    my $chart = $workbook->add_chart( name => 'Chart1', type => 'column' );
+    my $chart = $workbook->add_chart( type => 'column' );
 
-Note, the chart name currently needs to be specified. It will have a default value in later versions. The available types are:
+The properties that can be set are:
+
+    type     (required)
+    name     (optional)
+    embedded (optional)
+
+=over
+
+=item * C<type>
+
+This is a required parameter. It defines the type of chart that will be created.
+
+    my $chart = $workbook->add_chart( type => 'line' );
+
+The available types are:
 
     column
     bar
     line
     area
+
+=item * C<name>
+
+Set the name for the chart sheet. The name property is optional and if it isn't supplied will default to C<Chart1 .. n>. The name must be a valid Excel worksheet name. See C<add_worksheet()> for more details on valid sheet names. The C<name> property can be omitted for embedded charts.
+
+    my $chart = $workbook->add_chart( type => 'line', name => 'Results Chart' );
+
+=item * C<embedded>
+
+Specifies that the Chart object will be inserted in a worksheet via the C<insert_chart()> Worksheet method. It is an error to try insert a Chart that doesn't have this flag set.
+
+    my $chart = $workbook->add_chart( type => 'line', embedded => 1 );
+
+    # Configure the chart.
+    ...
+
+    # Insert the chart into the a worksheet.
+    $worksheet->insert_chart( 'E2', $chart );
+
+=back
 
 See L<Spreadsheet::WriteExcel::Chart> for details on how to configure the chart object once it is created. See also the C<chart_*.pl> programs in the examples directory of the distro.
 
@@ -311,7 +345,7 @@ This method is use to include externally generated charts in a Spreadsheet::Writ
 
     my $chart = $workbook->add_chart_ext('chart01.bin', 'Chart1');
 
-This feature is new and would be best described as experimental. Read C<charts.txt> in the charts directory of the distro for a full explanation.
+This feature is semi-deprecated in favour of the "native" charts created using C<add_chart()>. Read C<external_charts.txt> (or C<.pod>) in the external_charts directory of the distro for a full explanation.
 
 
 
@@ -618,7 +652,7 @@ The following methods are available through a new worksheet:
     show_comments()
     add_write_handler()
     insert_image()
-    embed_chart()
+    insert_chart()
     data_validation()
     get_name()
     activate()
@@ -1634,30 +1668,47 @@ BMP images must be 24 bit, true colour, bitmaps. In general it is best to avoid 
 
 
 
-=head2 embed_chart($row, $col, $filename, $x, $y, $scale_x, $scale_y)
+=head2 insert_chart($row, $col, $chart, $x, $y, $scale_x, $scale_y)
 
-This method can be used to insert a chart into a worksheet. The chart must first be extracted from an existing Excel file. See the separate C<Charts> documentation.
+This method can be used to insert a Chart object into a worksheet. The Chart must be created by the C<add_chart()> Workbook method  and it must have the C<embedded> option set.
 
-Here is an example:
+    my $chart = $workbook->add_chart( type => 'line', embedded => 1 );
 
-    $worksheet->embed_chart('B2', 'sales_chart.bin');
+    # Configure the chart.
+    ...
+
+    # Insert the chart into the a worksheet.
+    $worksheet->insert_chart('E2', $chart);
+
+See C<add_chart()> for details on how to create the Chart object and L<Spreadsheet::WriteExcel::Chart> for details on how to configure it. See also the C<chart_*.pl> programs in the examples directory of the distro.
 
 The C<$x>, C<$y>, C<$scale_x> and C<$scale_y> parameters are optional.
 
 The parameters C<$x> and C<$y> can be used to specify an offset from the top left hand corner of the cell specified by C<$row> and C<$col>. The offset values are in pixels. See the C<insert_image> method above for more information on sizes.
 
-    $worksheet1->embed_chart('B2', 'sales_chart.bin', 3, 3);
+    $worksheet1->insert_chart('E2', $chart, 3, 3);
 
 The parameters C<$scale_x> and C<$scale_y> can be used to scale the inserted image horizontally and vertically:
 
     # Scale the width by 120% and the height by 150%
-    $worksheet->embed_chart('B2', 'sales_chart.bin', 0, 0, 1.2, 1.5);
+    $worksheet->insert_chart('E2', $chart, 0, 0, 1.2, 1.5);
 
 The easiest way to calculate the required scaling is to create a test chart worksheet with Spreadsheet::WriteExcel. Then open the file, select the chart and drag the corner to get the required size. While holding down the mouse the scale of the resized chart is shown to the left of the formula bar.
 
-See also the example programs in the C<charts> directory of the distro.
+Note: you must call C<set_row()> or C<set_column()> before C<insert_chart()> if you wish to change the default dimensions of any of the rows or columns that the chart occupies. The height of a row can also change if you use a font that is larger than the default. This in turn will affect the scaling of your chart. To avoid this you should explicitly set the height of the row using C<set_row()> if it contains a font size that will change the row height.
 
-Note: you must call C<set_row()> or C<set_column()> before C<embed_chart()> if you wish to change the default dimensions of any of the rows or columns that the chart occupies. The height of a row can also change if you use a font that is larger than the default. This in turn will affect the scaling of your chart. To avoid this you should explicitly set the height of the row using C<set_row()> if it contains a font size that will change the row height.
+
+
+
+=head2 embed_chart($row, $col, $filename, $x, $y, $scale_x, $scale_y)
+
+This method can be used to insert a externally generated chart into a worksheet. The chart must first be extracted from an existing Excel file. This feature is semi-deprecated in favour of the "native" charts created using C<add_chart()>. Read C<external_charts.txt> (or C<.pod>) in the external_charts directory of the distro for a full explanation.
+
+Here is an example:
+
+    $worksheet->embed_chart('B2', 'sales_chart.bin');
+
+The C<$x>, C<$y>, C<$scale_x> and C<$scale_y> parameters are optional. See C<insert_chart()> above for details.
 
 
 
@@ -4781,6 +4832,10 @@ See L<Spreadsheet::WriteExcel::Examples> for more details.
     autofit.pl              Simulate Excel's autofit for column widths.
     bigfile.pl              Write past the 7MB limit with OLE::Storage_Lite.
     cgi.pl                  A simple CGI program.
+    chart_area.pl           A demo of area style charts.
+    chart_bar.pl            A demo of bar (vertical histogram) style charts.
+    chart_column.pl         A demo of column (histogram) style charts.
+    chart_line.pl           A demo of line style charts.
     chess.pl                An example of reusing formatting via properties.
     colors.pl               A demo of the colour palette and named colours.
     comments1.pl            Add comments to worksheet cells.
@@ -5379,7 +5434,7 @@ John McNamara jmcnamara@cpan.org
 
 =head1 COPYRIGHT
 
-Copyright MM-MMIX, John McNamara.
+Copyright MM-MMX, John McNamara.
 
 All Rights Reserved. This module is free software. It may be used, redistributed and/or modified under the same terms as Perl itself.
 
