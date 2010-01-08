@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Worksheet;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Worksheet);
 
-$VERSION = '2.33';
+$VERSION = '2.34';
 
 ###############################################################################
 #
@@ -788,7 +788,8 @@ sub _store_chartformat_stream {
 
     my $self = shift;
 
-    $self->_store_chartformat();
+    # The _vary_data_color is set by classes that need it, like Pie.
+    $self->_store_chartformat( $self->{_vary_data_color} );
 
     $self->_store_begin();
 
@@ -1165,7 +1166,7 @@ sub _store_chartformat {
     my $reserved2 = 0x00000000;    # Reserved.
     my $reserved3 = 0x00000000;    # Reserved.
     my $reserved4 = 0x00000000;    # Reserved.
-    my $grbit     = 0x0000;        # Option flags.
+    my $grbit     = $_[0] || 0;    # Option flags.
     my $icrt      = 0x0000;        # Drawing order.
 
     my $header = pack 'vv', $record, $length;
@@ -1919,6 +1920,8 @@ Currently the supported chart types are:
 
 =item * C<area>: Creates an Area (filled line) style chart. See L<Spreadsheet::WriteExcel::Chart::Area>.
 
+=item * C<pie>: Creates an Pie style chart. See L<Spreadsheet::WriteExcel::Chart::Pie>.
+
 =back
 
 More chart types will be supported in time. See the L</TODO> section.
@@ -1955,7 +1958,7 @@ This is the most important property of a series and must be set for every chart 
 
     $chart->add_series( values => '=Sheet1!$B$2:$B$10' );
 
-Note the format that should be used for the formula. It is the same as is used in Excel. You must also add the worksheet that you are referring to before you link to it, via the workbook C<add_worksheet()> method.
+Note the format that should be used for the formula. The worksheet name must be specified (even for embedded charts) and the cell references must be "absolute" references, i.e., they must contain C<$> signs. This is the format that is required by Excel for chart references. You must also add the worksheet that you are referring to before you link to it, via the workbook C<add_worksheet()> method.
 
 =item * C<categories>
 
@@ -2137,6 +2140,67 @@ For older perls you write Unicode strings as UTF-16BE by adding a C<name_encodin
 This methodology is explained in the "UNICODE IN EXCEL" section of L<Spreadsheet::WriteExcel> but is semi-deprecated. If you are using Unicode the easiest option is to just use UTF8 in perl 5.8+.
 
 
+=head1 EXAMPLE
+
+Here is a complete example that demonstrates most of the available features when creating a chart.
+
+    #!/usr/bin/perl -w
+
+    use strict;
+    use Spreadsheet::WriteExcel;
+
+    my $workbook  = Spreadsheet::WriteExcel->new( 'chart_area.xls' );
+    my $worksheet = $workbook->add_worksheet();
+    my $bold      = $workbook->add_format( bold => 1 );
+
+    # Add the data to the worksheet that the charts will refer to.
+    my $headings = [ 'Number', 'Sample 1', 'Sample 2' ];
+    my $data = [
+        [ 2, 3, 4, 5, 6, 7 ],
+        [ 1, 4, 5, 2, 1, 5 ],
+        [ 3, 6, 7, 5, 4, 3 ],
+    ];
+
+    $worksheet->write( 'A1', $headings, $bold );
+    $worksheet->write( 'A2', $data );
+
+    # Create a new chart object. In this case an embedded chart.
+    my $chart = $workbook->add_chart( type => 'area', embedded => 1 );
+
+    # Configure the first series. (Sample 1)
+    $chart->add_series(
+        name       => 'Sample 1',
+        categories => '=Sheet1!$A$2:$A$7',
+        values     => '=Sheet1!$B$2:$B$7',
+    );
+
+    # Configure the second series. (Sample 2)
+    $chart->add_series(
+        name       => 'Sample 2',
+        categories => '=Sheet1!$A$2:$A$7',
+        values     => '=Sheet1!$C$2:$C$7',
+    );
+
+    # Add a chart title and some axis labels.
+    $chart->set_title ( name => 'Results of sample analysis' );
+    $chart->set_x_axis( name => 'Test number' );
+    $chart->set_y_axis( name => 'Sample length (cm)' );
+
+    # Insert the chart into the worksheet (with an offset).
+    $worksheet->insert_chart( 'D2', $chart, 25, 10 );
+
+    __END__
+
+
+=begin html
+
+<p>This will produce a chart that looks like this:</p>
+
+<p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/area1.jpg" width="527" height="320" alt="Chart example." /></center></p>
+
+=end html
+
+
 =head1 TODO
 
 Charts in Spreadsheet::WriteExcel are a work in progress. More chart types and features will be added in time. Please be patient. Even a small feature can take a week or more to implement, test and document.
@@ -2145,7 +2209,7 @@ Features that are on the TODO list and will be added are:
 
 =over
 
-=item * Additional chart types. Stock, Pie and Scatter charts are next in line. Send an email if you are interested in other types and they will be added to the queue.
+=item * Additional chart types. Stock and Scatter charts are next in line. Send an email if you are interested in other types and they will be added to the queue. Chart sub-types will be added when the main chart types are covered.
 
 =item * Colours and formatting options. For now you will have to make do with the default Excel colours and formats.
 

@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Workbook;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Workbook Exporter);
 
-$VERSION = '2.33'; # The Life Pursuit
+$VERSION = '2.34'; # The Life Pursuit
 
 
 
@@ -64,7 +64,7 @@ Spreadsheet::WriteExcel - Write to a cross-platform Excel binary file.
 
 =head1 VERSION
 
-This document refers to version 2.31 of Spreadsheet::WriteExcel, released December 10, 2009.
+This document refers to version 2.34 of Spreadsheet::WriteExcel, released January 8, 2010.
 
 
 
@@ -101,11 +101,11 @@ To write a string, a formatted string, a number and a formula to the first works
 
 =head1 DESCRIPTION
 
-The Spreadsheet::WriteExcel module can be used to create a cross-platform Excel binary file. Multiple worksheets can be added to a workbook and formatting can be applied to cells. Text, numbers, formulas, hyperlinks and images can be written to the cells.
+The Spreadsheet::WriteExcel Perl module can be used to create a cross-platform Excel binary file. Multiple worksheets can be added to a workbook and formatting can be applied to cells. Text, numbers, formulas, hyperlinks, images and charts can be written to the cells.
 
-The Excel file produced by this module is compatible with 97, 2000, 2002 and 2003.
+The file produced by this module is compatible with Excel 97, 2000, 2002, 2003 and 2007.
 
-The module will work on the majority of Windows, UNIX and Macintosh platforms. Generated files are also compatible with the Linux/UNIX spreadsheet applications Gnumeric and OpenOffice.org.
+The module will work on the majority of Windows, UNIX and Mac platforms. Generated files are also compatible with the Linux/UNIX spreadsheet applications Gnumeric and OpenOffice.org.
 
 This module cannot be used to write to an existing Excel file (See L<MODIFYING AND REWRITING EXCEL FILES>).
 
@@ -313,6 +313,7 @@ The available types are:
     bar
     line
     area
+    pie
 
 =item * C<name>
 
@@ -4836,6 +4837,7 @@ See L<Spreadsheet::WriteExcel::Examples> for more details.
     chart_bar.pl            A demo of bar (vertical histogram) style charts.
     chart_column.pl         A demo of column (histogram) style charts.
     chart_line.pl           A demo of line style charts.
+    chart_pie.pl            A demo of pie style charts.
     chess.pl                An example of reusing formatting via properties.
     colors.pl               A demo of the colour palette and named colours.
     comments1.pl            Add comments to worksheet cells.

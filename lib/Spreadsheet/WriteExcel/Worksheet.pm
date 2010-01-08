@@ -24,7 +24,7 @@ use Spreadsheet::WriteExcel::Formula;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::BIFFwriter);
 
-$VERSION = '2.33';
+$VERSION = '2.34';
 
 ###############################################################################
 #
@@ -2571,14 +2571,11 @@ sub repeat_formula {
 
     # The STRING record if the formula evaluates to a string.
     my $string  = '';
-       $string  = $self->_encode_formula_result($value) if $is_string;
+       $string  = $self->_get_formula_string($value) if $is_string;
 
 
     # Store the data or write immediately depending on the compatibility mode.
     if ($self->{_compatibility}) {
-        my $string = '';
-           $string = $self->_get_formula_string($value) if $is_string;
-
         $self->{_table}->[$row]->[$col] = $header . $data . $formula . $string;
     }
     else {

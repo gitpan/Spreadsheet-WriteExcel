@@ -1,5 +1,15 @@
 Revision history for Perl module Spreadsheet::WriteExcel.
 
+2.34 January 8 2010 - Major
+
+    + Added support for Pie charts.
+
+    ! Re-added index.html in docs dir for Debian (and others).
+      http://rt.cpan.org/Public/Bug/Display.html?id=53346
+
+    ! Fix for incorrectly encoded string result in repeat_formula().
+
+
 2.33 January 3 2010 - Major
 
     + Added support for embedded charts. See insert_chart().
