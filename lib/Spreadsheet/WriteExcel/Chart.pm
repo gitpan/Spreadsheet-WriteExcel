@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Worksheet;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Worksheet);
 
-$VERSION = '2.34';
+$VERSION = '2.35';
 
 ###############################################################################
 #
@@ -461,11 +461,10 @@ sub _store_chart_stream {
 
     $self->_store_shtprops();
 
-    # Write the TEXT stream for each series.
-    my $font_index = 5;
-    for ( @{ $self->{_series} } ) {
+    # Write the TEXT streams.
+    for my $font_index ( 5 .. 6 ) {
         $self->_store_defaulttext();
-        $self->_store_series_text_stream( $font_index++ );
+        $self->_store_series_text_stream( $font_index );
     }
 
     $self->_store_axesused( 1 );
@@ -509,7 +508,7 @@ sub _store_series_stream {
     $self->_store_ai( 2, $category_type, $arg{_category_formula} );
     $self->_store_ai( 3, 1,              '' );
 
-    $self->_store_dataformat_stream( $arg{_index} );
+    $self->_store_dataformat_stream( $arg{_index}, $arg{_index}, 0xFFFF );
     $self->_store_sertocrt( 0 );
     $self->_store_end();
 }
@@ -527,7 +526,7 @@ sub _store_dataformat_stream {
 
     my $series_index = shift;
 
-    $self->_store_dataformat( $series_index );
+    $self->_store_dataformat( $series_index, $series_index, 0xFFFF );
 
     $self->_store_begin();
     $self->_store_3dbarshape();
@@ -798,6 +797,7 @@ sub _store_chartformat_stream {
 
     # CHARTFORMATLINK is not used.
     $self->_store_legend_stream();
+    $self->_store_marker_dataformat_stream();
     $self->_store_end();
 }
 
@@ -810,6 +810,18 @@ sub _store_chartformat_stream {
 # the chart types such as Column, Line, Pie, etc.
 #
 sub _store_chart_type {
+
+}
+
+
+###############################################################################
+#
+# _store_marker_dataformat_stream()
+#
+# This is an abstract method that is overridden by the sub-classes to define
+# properties of markers, linetypes, pie formats and other.
+#
+sub _store_marker_dataformat_stream {
 
 }
 
@@ -1184,6 +1196,27 @@ sub _store_chartformat {
 
 ###############################################################################
 #
+# _store_chartline()
+#
+# Write the CHARTLINE chart BIFF record.
+#
+sub _store_chartline {
+
+    my $self = shift;
+
+    my $record = 0x101C;    # Record identifier.
+    my $length = 0x0002;    # Number of bytes to follow.
+    my $type   = 0x0001;    # Drop/hi-lo line type.
+
+    my $header = pack 'vv', $record, $length;
+    my $data = pack 'v', $type;
+
+    $self->_append( $header, $data );
+}
+
+
+###############################################################################
+#
 # _store_charttext()
 #
 # Write the TEXT chart BIFF record.
@@ -1239,9 +1272,9 @@ sub _store_dataformat {
 
     my $record        = 0x1006;    # Record identifier.
     my $length        = 0x0008;    # Number of bytes to follow.
-    my $point_number  = 0xFFFF;    # Point number.
     my $series_index  = $_[0];     # Series index.
-    my $series_number = $_[0];     # Series number. (Same as index).
+    my $series_number = $_[1];     # Series number. (Same as index).
+    my $point_number  = $_[2];     # Point number.
     my $grbit         = 0x0000;    # Format flags.
 
     my $header = pack 'vv', $record, $length;
@@ -1271,8 +1304,28 @@ sub _store_defaulttext {
     my $type   = 0x0002;    # Type.
 
     my $header = pack 'vv', $record, $length;
-    my $data = '';
-    $data .= pack 'v', $type;
+    my $data = pack 'v', $type;
+
+    $self->_append( $header, $data );
+}
+
+
+###############################################################################
+#
+# _store_dropbar()
+#
+# Write the DROPBAR chart BIFF record.
+#
+sub _store_dropbar {
+
+    my $self = shift;
+
+    my $record      = 0x103D;    # Record identifier.
+    my $length      = 0x0002;    # Number of bytes to follow.
+    my $percent_gap = 0x0096;    # Drop bar width gap (%).
+
+    my $header = pack 'vv', $record, $length;
+    my $data = pack 'v', $percent_gap;
 
     $self->_append( $header, $data );
 }
@@ -1440,6 +1493,40 @@ sub _store_lineformat {
 
 ###############################################################################
 #
+# _store_markerformat()
+#
+# Write the MARKERFORMAT chart BIFF record.
+#
+sub _store_markerformat {
+
+    my $self = shift;
+
+    my $record  = 0x1009;    # Record identifier.
+    my $length  = 0x0014;    # Number of bytes to follow.
+    my $rgbFore = $_[0];     # Foreground RGB color.
+    my $rgbBack = $_[1];     # Background RGB color.
+    my $marker  = $_[2];     # Type of marker.
+    my $grbit   = $_[3];     # Format flags.
+    my $icvFore = $_[4];     # Color index marker border.
+    my $icvBack = $_[5];     # Color index marker fill.
+    my $miSize  = $_[6];     # Size of line markers.
+
+    my $header = pack 'vv', $record, $length;
+    my $data = '';
+    $data .= pack 'V', $rgbFore;
+    $data .= pack 'V', $rgbBack;
+    $data .= pack 'v', $marker;
+    $data .= pack 'v', $grbit;
+    $data .= pack 'v', $icvFore;
+    $data .= pack 'v', $icvBack;
+    $data .= pack 'V', $miSize;
+
+    $self->_append( $header, $data );
+}
+
+
+###############################################################################
+#
 # _store_objectlink()
 #
 # Write the OBJECTLINK chart BIFF record.
@@ -1459,6 +1546,28 @@ sub _store_objectlink {
     $data .= pack 'v', $link_type;
     $data .= pack 'v', $link_index1;
     $data .= pack 'v', $link_index2;
+
+    $self->_append( $header, $data );
+}
+
+
+###############################################################################
+#
+# _store_pieformat()
+#
+# Write the PIEFORMAT chart BIFF record.
+#
+sub _store_pieformat {
+
+    my $self = shift;
+
+    my $record  = 0x100B;    # Record identifier.
+    my $length  = 0x0002;    # Number of bytes to follow.
+    my $percent = 0x0000;    # Distance % from center.
+
+    my $header = pack 'vv', $record, $length;
+    my $data = '';
+    $data .= pack 'v', $percent;
 
     $self->_append( $header, $data );
 }
@@ -1889,7 +1998,7 @@ To create a simple Excel file with a chart using Spreadsheet::WriteExcel:
         values     => '=Sheet1!$B$2:$B$7',
     );
 
-    # Add the data to the worksheet the chart refers to.
+    # Add the worksheet data the chart refers to.
     my $data = [
         [ 'Category', 2, 3, 4, 5, 6, 7 ],
         [ 'Value',    1, 4, 5, 2, 1, 5 ],
@@ -1912,19 +2021,23 @@ Currently the supported chart types are:
 
 =over
 
-=item * C<column>: Creates a column style (histogram) chart. See L<Spreadsheet::WriteExcel::Chart::Column>.
+=item * C<area>: Creates an Area (filled line) style chart. See L<Spreadsheet::WriteExcel::Chart::Area>.
 
 =item * C<bar>: Creates a Bar style (transposed histogram) chart. See L<Spreadsheet::WriteExcel::Chart::Bar>.
 
-=item * C<line>: Creates a Line style chart. See L<Spreadsheet::WriteExcel::Chart::Line>.
+=item * C<column>: Creates a column style (histogram) chart. See L<Spreadsheet::WriteExcel::Chart::Column>.
 
-=item * C<area>: Creates an Area (filled line) style chart. See L<Spreadsheet::WriteExcel::Chart::Area>.
+=item * C<line>: Creates a Line style chart. See L<Spreadsheet::WriteExcel::Chart::Line>.
 
 =item * C<pie>: Creates an Pie style chart. See L<Spreadsheet::WriteExcel::Chart::Pie>.
 
+=item * C<scatter>: Creates an Scatter style chart. See L<Spreadsheet::WriteExcel::Chart::Scatter>.
+
+=item * C<stock>: Creates an Stock style chart. See L<Spreadsheet::WriteExcel::Chart::Stock>.
+
 =back
 
-More chart types will be supported in time. See the L</TODO> section.
+More charts and sub-types will be supported in time. See the L</TODO> section.
 
 Methods that are common to all chart types are documented below.
 
@@ -1990,7 +2103,7 @@ Optional, can be used to link the name to a worksheet cell. See L</Chart names a
 
 =back
 
-You can add more than one series to a chart. The series numbering and order in the final chart is the same as the order in which that are added.
+You can add more than one series to a chart, in fact some chart types such as C<stock> require it. The series numbering and order in the final chart is the same as the order in which that are added.
 
     # Add the first series.
     $chart->add_series(
@@ -2153,7 +2266,7 @@ Here is a complete example that demonstrates most of the available features when
     my $worksheet = $workbook->add_worksheet();
     my $bold      = $workbook->add_format( bold => 1 );
 
-    # Add the data to the worksheet that the charts will refer to.
+    # Add the worksheet data that the charts will refer to.
     my $headings = [ 'Number', 'Sample 1', 'Sample 2' ];
     my $data = [
         [ 2, 3, 4, 5, 6, 7 ],
@@ -2209,13 +2322,17 @@ Features that are on the TODO list and will be added are:
 
 =over
 
-=item * Additional chart types. Stock and Scatter charts are next in line. Send an email if you are interested in other types and they will be added to the queue. Chart sub-types will be added when the main chart types are covered.
+=item *  Chart sub-types.
 
 =item * Colours and formatting options. For now you will have to make do with the default Excel colours and formats.
 
 =item * Axis controls, gridlines.
 
-=item * Embedded data in charts for third party application support.
+=item * 3D charts.
+
+=item * Embedded data in charts for third party application support. See Known Issues.
+
+=item * Additional chart types such as Bubble and Radar. Send an email if you are interested in other types and they will be added to the queue.
 
 =back
 
@@ -2228,6 +2345,8 @@ If you are interested in sponsoring a feature let me know.
 =item * Currently charts don't contain embedded data from which the charts can be rendered. Excel and most other third party applications ignore this and read the data via the links that have been specified. However, some applications may complain or not render charts correctly. The preview option in Mac OS X is an known example. This will be fixed in a later release.
 
 =item * When there are several charts with titles set in a workbook some of the titles may display at a font size of 10 instead of the default 12 until another chart with the title set is viewed.
+
+=item * Stock (and other) charts should have the X-axis dates aligned at an angle for clarity. This will be fixed at a later stage.
 
 =back
 

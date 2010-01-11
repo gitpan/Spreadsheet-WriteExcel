@@ -1,8 +1,8 @@
-package Spreadsheet::WriteExcel::Chart::Line;
+package Spreadsheet::WriteExcel::Chart::Scatter;
 
 ###############################################################################
 #
-# Line - A writer class for Excel Line charts.
+# Scatter - A writer class for Excel Scatter charts.
 #
 # Used in conjunction with Spreadsheet::WriteExcel::Chart.
 #
@@ -45,20 +45,71 @@ sub new {
 #
 # Implementation of the abstract method from the specific chart class.
 #
-# Write the LINE chart BIFF record. Defines a line chart type.
+# Write the SCATTER chart BIFF record. Defines a scatter chart type.
 #
 sub _store_chart_type {
 
     my $self = shift;
 
-    my $record = 0x1018;    # Record identifier.
-    my $length = 0x0002;    # Number of bytes to follow.
-    my $grbit  = 0x0000;    # Option flags.
+    my $record       = 0x101B;    # Record identifier.
+    my $length       = 0x0006;    # Number of bytes to follow.
+    my $bubble_ratio = 0x0064;    # Bubble ratio.
+    my $bubble_type  = 0x0001;    # Bubble type.
+    my $grbit        = 0x0000;    # Option flags.
 
     my $header = pack 'vv', $record, $length;
-    my $data = pack 'v', $grbit;
+    my $data = '';
+    $data .= pack 'v', $bubble_ratio;
+    $data .= pack 'v', $bubble_type;
+    $data .= pack 'v', $grbit;
 
     $self->_append( $header, $data );
+}
+
+
+###############################################################################
+#
+# _store_axis_category_stream(). Overridden.
+#
+# Write the AXIS chart substream for the chart category.
+#
+# For a Scatter chart the category stream is replace with a values stream. We
+# override this method and turn it into a values stream.
+#
+sub _store_axis_category_stream {
+
+    my $self = shift;
+
+    $self->_store_axis( 0 );
+
+    $self->_store_begin();
+    $self->_store_valuerange();
+    $self->_store_tick();
+    $self->_store_end();
+}
+
+
+###############################################################################
+#
+# _store_marker_dataformat_stream(). Overridden.
+#
+# This is an implementation of the parent abstract method  to define
+# properties of markers, linetypes, pie formats and other.
+#
+sub _store_marker_dataformat_stream {
+
+    my $self = shift;
+
+    $self->_store_dataformat( 0x0000, 0xFFFD, 0x0000 );
+
+    $self->_store_begin();
+    $self->_store_3dbarshape();
+    $self->_store_lineformat( 0x00000000, 0x0005, 0xFFFF, 0x0008, 0x004D );
+    $self->_store_areaformat( 0x00FFFFFF, 0x0000, 0x01, 0x01, 0x4E, 0x4D );
+    $self->_store_pieformat();
+    $self->_store_markerformat( 0x00, 0x00, 0x02, 0x01, 0x4D, 0x4D, 0x3C );
+    $self->_store_end();
+
 }
 
 
@@ -70,11 +121,11 @@ __END__
 
 =head1 NAME
 
-Line - A writer class for Excel Line charts.
+Scatter - A writer class for Excel Scatter charts.
 
 =head1 SYNOPSIS
 
-To create a simple Excel file with a Line chart using Spreadsheet::WriteExcel:
+To create a simple Excel file with a Scatter chart using Spreadsheet::WriteExcel:
 
     #!/usr/bin/perl -w
 
@@ -84,7 +135,7 @@ To create a simple Excel file with a Line chart using Spreadsheet::WriteExcel:
     my $workbook  = Spreadsheet::WriteExcel->new( 'chart.xls' );
     my $worksheet = $workbook->add_worksheet();
 
-    my $chart     = $workbook->add_chart( type => 'line' );
+    my $chart     = $workbook->add_chart( type => 'scatter' );
 
     # Configure the chart.
     $chart->add_series(
@@ -104,9 +155,9 @@ To create a simple Excel file with a Line chart using Spreadsheet::WriteExcel:
 
 =head1 DESCRIPTION
 
-This module implements Line charts for L<Spreadsheet::WriteExcel>. The chart object is created via the Workbook C<add_chart()> method:
+This module implements Scatter charts for L<Spreadsheet::WriteExcel>. The chart object is created via the Workbook C<add_chart()> method:
 
-    my $chart = $workbook->add_chart( type => 'line' );
+    my $chart = $workbook->add_chart( type => 'scatter' );
 
 Once the object is created it can be configured via the following methods that are common to all chart classes:
 
@@ -117,9 +168,9 @@ Once the object is created it can be configured via the following methods that a
 
 These methods are explained in detail in L<Spreadsheet::WriteExcel::Chart>. Class specific methods or settings, if any, are explained below.
 
-=head1 Line Chart Methods
+=head1 Scatter Chart Methods
 
-There aren't currently any line chart specific methods. See the TODO section of L<Spreadsheet::WriteExcel::Chart>.
+There aren't currently any scatter chart specific methods. See the TODO section of L<Spreadsheet::WriteExcel::Chart>.
 
 =head1 EXAMPLE
 
@@ -130,7 +181,7 @@ Here is a complete example that demonstrates most of the available features when
     use strict;
     use Spreadsheet::WriteExcel;
 
-    my $workbook  = Spreadsheet::WriteExcel->new( 'chart_line.xls' );
+    my $workbook  = Spreadsheet::WriteExcel->new( 'chart_scatter.xls' );
     my $worksheet = $workbook->add_worksheet();
     my $bold      = $workbook->add_format( bold => 1 );
 
@@ -146,7 +197,7 @@ Here is a complete example that demonstrates most of the available features when
     $worksheet->write( 'A2', $data );
 
     # Create a new chart object. In this case an embedded chart.
-    my $chart = $workbook->add_chart( type => 'line', embedded => 1 );
+    my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
 
     # Configure the first series. (Sample 1)
     $chart->add_series(
@@ -177,7 +228,7 @@ Here is a complete example that demonstrates most of the available features when
 
 <p>This will produce a chart that looks like this:</p>
 
-<p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/line1.jpg" width="527" height="320" alt="Chart example." /></center></p>
+<p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/scatter1.jpg" width="527" height="320" alt="Chart example." /></center></p>
 
 =end html
 
