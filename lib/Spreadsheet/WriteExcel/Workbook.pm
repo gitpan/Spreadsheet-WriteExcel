@@ -24,7 +24,7 @@ use Spreadsheet::WriteExcel::Properties ':property_sets';
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::BIFFwriter Exporter);
 
-$VERSION = '2.35';
+$VERSION = '2.36';
 
 ###############################################################################
 #
@@ -518,6 +518,10 @@ sub add_chart {
         $self->{_sheetnames}->[$index] = $name;     # Store EXTERNSHEET names
     }
     else {
+        # Set index to 0 so that the activate() and set_first_sheet() methods
+        # point back to the first worksheet if used for embedded charts.
+        $chart->{_index} = 0;
+
         $chart->_set_embedded_config_data();
     }
 
@@ -1210,8 +1214,7 @@ sub _store_workbook {
         @{$self->{_worksheets}}[0]->{_hidden}   = 0;
     }
 
-    # Calculate the number of selected worksheet tabs and call the finalization
-    # methods for each worksheet
+    # Calculate the number of selected sheet tabs and set the active sheet.
     foreach my $sheet (@{$self->{_worksheets}}) {
         $self->{_selected}++ if $sheet->{_selected};
         $sheet->{_active} = 1 if $sheet->{_index} == $self->{_activesheet};
@@ -1408,7 +1411,7 @@ sub _calc_sheet_offsets {
 
     foreach my $sheet (@{$self->{_worksheets}}) {
         $sheet->{_offset} = $offset;
-        $sheet->_close($self->{_sheetnames});
+        $sheet->_close();
         $offset += $sheet->{_datasize};
     }
 
@@ -2026,13 +2029,12 @@ sub _store_all_styles {
 sub _store_names {
 
     my $self        = shift;
-    my $index       = 0;
+    my $index;
     my %ext_refs    = %{$self->{_ext_refs}};
 
 
     # Create the user defined names.
     for my $defined_name (@{$self->{_defined_names}}) {
-        #print $defined_name->{name}, "\n";
 
         $self->_store_name(
             $defined_name->{name},
@@ -2042,13 +2044,16 @@ sub _store_names {
         );
     }
 
+    # Sort the worksheets into alphabetical order by name. This is a
+    # requirement for some non-English language Excel patch levels.
+    my @worksheets = @{$self->{_worksheets}};
+       @worksheets = sort { $a->{_name} cmp $b->{_name} } @worksheets;
 
-    # Create the print area NAME records
-    foreach my $worksheet (@{$self->{_worksheets}}) {
-
+    # Create the autofilter NAME records
+    foreach my $worksheet (@worksheets) {
+        $index  = $worksheet->{_index};
         my $key = "$index:$index";
         my $ref = $ext_refs{$key};
-        $index++;
 
         # Write a Name record if Autofilter has been defined
         if ($worksheet->{_filter_count}) {
@@ -2063,6 +2068,13 @@ sub _store_names {
                 1, # Hidden
             );
         }
+    }
+
+    # Create the print area NAME records
+    foreach my $worksheet (@worksheets) {
+        $index  = $worksheet->{_index};
+        my $key = "$index:$index";
+        my $ref = $ext_refs{$key};
 
         # Write a Name record if the print area has been defined
         if (defined $worksheet->{_print_rowmin}) {
@@ -2076,13 +2088,11 @@ sub _store_names {
                 $worksheet->{_print_colmax}
             );
         }
-
     }
 
-    $index = 0;
-
     # Create the print title NAME records
-    foreach my $worksheet (@{$self->{_worksheets}}) {
+    foreach my $worksheet (@worksheets) {
+        $index  = $worksheet->{_index};
 
         my $rowmin = $worksheet->{_title_rowmin};
         my $rowmax = $worksheet->{_title_rowmax};
@@ -2090,7 +2100,6 @@ sub _store_names {
         my $colmax = $worksheet->{_title_colmax};
         my $key    = "$index:$index";
         my $ref    = $ext_refs{$key};
-        $index++;
 
         # Determine if row + col, row, col or nothing has been defined
         # and write the appropriate record

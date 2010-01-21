@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Worksheet;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Worksheet);
 
-$VERSION = '2.35';
+$VERSION = '2.36';
 
 ###############################################################################
 #
@@ -95,6 +95,7 @@ sub new {
     $self->{_embedded}    = 0;
 
     bless $self, $class;
+    $self->_set_default_properties();
     $self->_set_default_config_data();
     return $self;
 }
@@ -217,6 +218,25 @@ sub set_title {
 
 ###############################################################################
 #
+# set_legend()
+#
+# Set the properties of the chart legend.
+#
+sub set_legend {
+
+    my $self = shift;
+    my %arg  = @_;
+
+    if (defined $arg{position}) {
+        if (lc $arg{position} eq 'none') {
+            $self->{_legend}->{_visible} = 0;
+        }
+    }
+}
+
+
+###############################################################################
+#
 # Internal methods. The following section of methods are used for the internal
 # structuring of the Chart object and file format.
 #
@@ -245,7 +265,7 @@ sub _prepend {
 
 ###############################################################################
 #
-# _close()
+# _close(), overridden.
 #
 # Create and store the Chart data structures.
 #
@@ -310,8 +330,65 @@ sub _close {
 
     # TODO add SINDEX record
 
-    #$self->_store_window2();
+    $self->_store_window2();
     $self->_store_eof();
+}
+
+
+###############################################################################
+#
+# _store_window2(), overridden.
+#
+# Write BIFF record Window2. Note, this overrides the parent Worksheet
+# record because the Chart version of the record is smaller and is used
+# mainly to indicate if the chart tab is selected or not.
+#
+sub _store_window2 {
+
+    use integer;    # Avoid << shift bug in Perl 5.6.0 on HP-UX
+
+    my $self   = shift;
+
+    my $record  = 0x023E;    # Record identifier
+    my $length  = 0x000A;    # Number of bytes to follow
+    my $grbit   = 0x0000;    # Option flags
+    my $rwTop   = 0x0000;    # Top visible row
+    my $colLeft = 0x0000;    # Leftmost visible column
+    my $rgbHdr  = 0x0000;    # Row/col heading, grid color
+
+    # The options flags that comprise $grbit
+    my $fDspFmla       = 0;                     # 0 - bit
+    my $fDspGrid       = 0;                     # 1
+    my $fDspRwCol      = 0;                     # 2
+    my $fFrozen        = 0;                     # 3
+    my $fDspZeros      = 0;                     # 4
+    my $fDefaultHdr    = 0;                     # 5
+    my $fArabic        = 0;                     # 6
+    my $fDspGuts       = 0;                     # 7
+    my $fFrozenNoSplit = 0;                     # 0 - bit
+    my $fSelected      = $self->{_selected};    # 1
+    my $fPaged         = 0;                     # 2
+    my $fBreakPreview  = 0;                     # 3
+
+    #<<< Perltidy ignore this.
+    $grbit             = $fDspFmla;
+    $grbit            |= $fDspGrid       << 1;
+    $grbit            |= $fDspRwCol      << 2;
+    $grbit            |= $fFrozen        << 3;
+    $grbit            |= $fDspZeros      << 4;
+    $grbit            |= $fDefaultHdr    << 5;
+    $grbit            |= $fArabic        << 6;
+    $grbit            |= $fDspGuts       << 7;
+    $grbit            |= $fFrozenNoSplit << 8;
+    $grbit            |= $fSelected      << 9;
+    $grbit            |= $fPaged         << 10;
+    $grbit            |= $fBreakPreview  << 11;
+    #>>>
+
+    my $header = pack( "vv", $record, $length );
+    my $data = pack( "vvvV", $grbit, $rwTop, $colLeft, $rgbHdr );
+
+    $self->_append( $header, $data );
 }
 
 
@@ -752,10 +829,23 @@ sub _store_frame_stream {
 
     my $self = shift;
 
+    my $plotarea = $self->{_plotarea};
+
     $self->_store_frame( 0x00, 0x03 );
     $self->_store_begin();
-    $self->_store_lineformat( 0x00808080, 0x0000, 0x0000, 0x0000, 0x0017 );
-    $self->_store_areaformat( 0x00C0C0C0, 0x0000, 0x01, 0x00, 0x16, 0x4F );
+
+    $self->_store_lineformat(
+        $plotarea->{_border_color_rgb}, $plotarea->{_border_pattern},
+        $plotarea->{_border_weight},    $plotarea->{_border_options},
+        $plotarea->{_border_color_index}
+    );
+
+    $self->_store_areaformat(
+        $plotarea->{_fg_color_rgb},   $plotarea->{_bg_color_rgb},
+        $plotarea->{_area_pattern},   $plotarea->{_area_options},
+        $plotarea->{_fg_color_index}, $plotarea->{_bg_color_index}
+    );
+
     $self->_store_end();
 }
 
@@ -795,8 +885,12 @@ sub _store_chartformat_stream {
     # Store the BIFF record that will define the chart type.
     $self->_store_chart_type();
 
-    # CHARTFORMATLINK is not used.
-    $self->_store_legend_stream();
+    # Note, the CHARTFORMATLINK record is only written by Excel.
+
+    if ( $self->{_legend}->{_visible} ) {
+        $self->_store_legend_stream();
+    }
+
     $self->_store_marker_dataformat_stream();
     $self->_store_end();
 }
@@ -1652,6 +1746,47 @@ sub _store_pos {
 
 ###############################################################################
 #
+# _store_serauxtrend()
+#
+# Write the SERAUXTREND chart BIFF record.
+#
+sub _store_serauxtrend {
+
+    my $self = shift;
+
+    my $record     = 0x104B;    # Record identifier.
+    my $length     = 0x001C;    # Number of bytes to follow.
+    my $reg_type   = $_[0];     # Regression type.
+    my $poly_order = $_[1];     # Polynomial order.
+    my $equation   = $_[2];     # Display equation.
+    my $r_squared  = $_[3];     # Display R-squared.
+    my $intercept;              # Forced intercept.
+    my $forecast;               # Forecast forward.
+    my $backcast;               # Forecast backward.
+
+    # TODO. When supported, intercept needs to be NAN if not used.
+    # Also need to reverse doubles.
+    $intercept = pack 'H*', 'FFFFFFFF0001FFFF';
+    $forecast  = pack 'H*', '0000000000000000';
+    $backcast  = pack 'H*', '0000000000000000';
+
+
+    my $header = pack 'vv', $record, $length;
+    my $data = '';
+    $data .= pack 'C', $reg_type;
+    $data .= pack 'C', $poly_order;
+    $data .= $intercept;
+    $data .= pack 'C', $equation;
+    $data .= pack 'C', $r_squared;
+    $data .= $forecast;
+    $data .= $backcast;
+
+    $self->_append( $header, $data );
+}
+
+
+###############################################################################
+#
 # _store_series()
 #
 # Write the SERIES chart BIFF record.
@@ -1714,6 +1849,27 @@ sub _store_seriestext {
     $data .= pack 'C', $encoding;
 
     $self->_append( $header, $data, $str );
+}
+
+
+###############################################################################
+#
+# _store_serparent()
+#
+# Write the SERPARENT chart BIFF record.
+#
+sub _store_serparent {
+
+    my $self = shift;
+
+    my $record = 0x104A;    # Record identifier.
+    my $length = 0x0002;    # Number of bytes to follow.
+    my $series = $_[0];     # Series parent.
+
+    my $header = pack 'vv', $record, $length;
+    my $data = pack 'v', $series;
+
+    $self->_append( $header, $data );
 }
 
 
@@ -1895,6 +2051,39 @@ sub _store_valuerange {
 
 ###############################################################################
 #
+# _set_default_properties()
+#
+# Setup the default properties for a chart.
+#
+sub _set_default_properties {
+
+    my $self = shift;
+
+    $self->{_legend} = {
+        _visible  => 1,
+        _position => 0,
+        _vertical => 0,
+    };
+
+    $self->{_plotarea} = {
+        _visible            => 1,
+        _fg_color_index     => 0x16,
+        _fg_color_rgb       => 0xC0C0C0,
+        _bg_color_index     => 0x4F,
+        _bg_color_rgb       => 0x000000,
+        _area_pattern       => 0x0001,
+        _area_options       => 0x0000,
+        _border_pattern     => 0x0000,
+        _border_weight      => 0x0000,
+        _border_color_index => 0x17,
+        _border_color_rgb   => 0x808080,
+        _border_options     => 0x0000,
+    };
+}
+
+
+###############################################################################
+#
 # _set_default_config_data()
 #
 # Setup the default configuration data for a chart.
@@ -2071,7 +2260,7 @@ This is the most important property of a series and must be set for every chart 
 
     $chart->add_series( values => '=Sheet1!$B$2:$B$10' );
 
-Note the format that should be used for the formula. The worksheet name must be specified (even for embedded charts) and the cell references must be "absolute" references, i.e., they must contain C<$> signs. This is the format that is required by Excel for chart references. You must also add the worksheet that you are referring to before you link to it, via the workbook C<add_worksheet()> method.
+Note the format that should be used for the formula. The worksheet name must be specified (even for embedded charts) and the cell references must be "absolute" references, i.e., they must contain C<$> signs. This is the format that is required by Excel for chart references. You must also add the worksheet that you are referring to before you link to it, via the workbook C<add_worksheet()> method. See also L</Working with Cell Ranges>.
 
 =item * C<categories>
 
@@ -2217,41 +2406,59 @@ Optional, can be used to link the name to a worksheet cell. See L</Chart names a
 =back
 
 
+=head2 set_legend()
 
-=head1 Chart names and links
+The C<set_legend()> method is used to set properties of the chart legend.
 
-The C<add_series())>, C<set_x_axis()>, C<set_y_axis()> and C<set_title()> methods all support a C<name> property. In general these names can be either a static string or a link to a worksheet cell. If you choose to use the C<name_formula> property to specify a link then you should also the C<name> property. This isn't strictly required by Excel but some third party applications expect it to be present.
+    $chart->set_legend( position => 'none' );
 
-    $chart->set_title(
-        name          => 'Year End Results',
-        name_formula  => '=Sheet1!$C$1',
-    );
+The properties that can be set are:
 
-These links should be used sparingly since they aren't commonly used in Excel charts.
+    position      (optional)
+
+=over
+
+=item * C<position>
+
+Set the position of the chart legend.
+
+    $chart->set_legend( position => 'none' );
+
+The default legend position is C<bottom>. The currently supported chart positions are:
+
+    none
+    bottom
+
+The other legend positions will be added soon.
+
+=back
 
 
-=head1 Chart names and Unicode
+=head1 WORKSHEET METHODS
 
-The C<add_series())>, C<set_x_axis()>, C<set_y_axis()> and C<set_title()> methods all support a C<name> property. These names can be UTF8 strings if you are using perl 5.8+.
+In Excel a chart sheet (i.e, a chart that isn't embedded) shares properties with data worksheets such as tab selection, headers, footers, margins and print properties.
 
+In Spreadsheet::WriteExcel you can set chart sheet properties using the same methods that are used for Worksheet objects.
 
-    # perl 5.8+ example:
-    my $smiley = "\x{263A}";
+The following Worksheet methods are also available through a non-embedded Chart object:
 
-    $chart->set_title( name => "Best. Results. Ever! $smiley" );
+    get_name()
+    activate()
+    select()
+    hide()
+    set_first_sheet()
+    protect()
+    set_zoom()
+    set_tab_color()
 
-For older perls you write Unicode strings as UTF-16BE by adding a C<name_encoding> property:
+    set_landscape()
+    set_portrait()
+    set_paper()
+    set_margins()
+    set_header()
+    set_footer()
 
-    # perl 5.005 example:
-    my $utf16be_name = pack 'n', 0x263A;
-
-    $chart->set_title(
-        name          => $utf16be_name,
-        name_encoding => 1,
-    );
-
-This methodology is explained in the "UNICODE IN EXCEL" section of L<Spreadsheet::WriteExcel> but is semi-deprecated. If you are using Unicode the easiest option is to just use UTF8 in perl 5.8+.
-
+See L<Spreadsheet::WriteExcel> for a detailed explanation of these methods.
 
 =head1 EXAMPLE
 
@@ -2312,6 +2519,78 @@ Here is a complete example that demonstrates most of the available features when
 <p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/area1.jpg" width="527" height="320" alt="Chart example." /></center></p>
 
 =end html
+
+
+=head1 Chart names and links
+
+The C<add_series())>, C<set_x_axis()>, C<set_y_axis()> and C<set_title()> methods all support a C<name> property. In general these names can be either a static string or a link to a worksheet cell. If you choose to use the C<name_formula> property to specify a link then you should also the C<name> property. This isn't strictly required by Excel but some third party applications expect it to be present.
+
+    $chart->set_title(
+        name          => 'Year End Results',
+        name_formula  => '=Sheet1!$C$1',
+    );
+
+These links should be used sparingly since they aren't commonly used in Excel charts.
+
+
+=head1 Chart names and Unicode
+
+The C<add_series())>, C<set_x_axis()>, C<set_y_axis()> and C<set_title()> methods all support a C<name> property. These names can be UTF8 strings if you are using perl 5.8+.
+
+
+    # perl 5.8+ example:
+    my $smiley = "\x{263A}";
+
+    $chart->set_title( name => "Best. Results. Ever! $smiley" );
+
+For older perls you write Unicode strings as UTF-16BE by adding a C<name_encoding> property:
+
+    # perl 5.005 example:
+    my $utf16be_name = pack 'n', 0x263A;
+
+    $chart->set_title(
+        name          => $utf16be_name,
+        name_encoding => 1,
+    );
+
+This methodology is explained in the "UNICODE IN EXCEL" section of L<Spreadsheet::WriteExcel> but is semi-deprecated. If you are using Unicode the easiest option is to just use UTF8 in perl 5.8+.
+
+
+=head1 Working with Cell Ranges
+
+
+In the section on C<add_series()> it was noted that the series must be defined using a range formula:
+
+    $chart->add_series( values => '=Sheet1!$B$2:$B$10' );
+
+The worksheet name must be specified (even for embedded charts) and the cell references must be "absolute" references, i.e., they must contain C<$> signs. This is the format that is required by Excel for chart references.
+
+Since it isn't very convenient to work with this type of string programmatically the L<Spreadsheet::WriteExcel::Utility> module, which is included with Spreadsheet::WriteExcel, provides a function called C<xl_range_formula()> to convert from zero based row and column cell references to an A1 style formula string.
+
+The syntax is:
+
+    xl_range_formula($sheetname, $row_1, $row_2, $col_1, $col_2)
+
+If you include it in your program, using the standard import syntax, you can use the function as follows:
+
+
+    # Include the Utility module or just the function you need.
+    use Spreadsheet::WriteExcel::Utility qw( xl_range_formula );
+    ...
+
+    # Then use it as required.
+    $chart->add_series(
+        categories    => xl_range_formula( 'Sheet1', 1, 9, 0, 0 ),
+        values        => xl_range_formula( 'Sheet1', 1, 9, 1, 1 );,
+    );
+
+    # Which is the same as:
+    $chart->add_series(
+        categories    => '=Sheet1!$A$2:$A$10',
+        values        => '=Sheet1!$B$2:$B$10',
+    );
+
+See L<Spreadsheet::WriteExcel::Utility> for more details.
 
 
 =head1 TODO
