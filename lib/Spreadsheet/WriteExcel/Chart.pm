@@ -21,7 +21,7 @@ use Spreadsheet::WriteExcel::Worksheet;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::Worksheet);
 
-$VERSION = '2.36';
+$VERSION = '2.37';
 
 ###############################################################################
 #
@@ -227,10 +227,132 @@ sub set_legend {
     my $self = shift;
     my %arg  = @_;
 
-    if (defined $arg{position}) {
-        if (lc $arg{position} eq 'none') {
+    if ( defined $arg{position} ) {
+        if ( lc $arg{position} eq 'none' ) {
             $self->{_legend}->{_visible} = 0;
         }
+    }
+}
+
+
+###############################################################################
+#
+# set_plotarea()
+#
+# Set the properties of the chart plotarea.
+#
+sub set_plotarea {
+
+    my $self = shift;
+    my %arg  = @_;
+    return unless keys %arg;
+
+    my $area = $self->{_plotarea};
+
+    # Set the plotarea visibility.
+    if ( defined $arg{visible} ) {
+        $area->{_visible} = $arg{visible};
+        return if !$area->{_visible};
+    }
+
+    # TODO. could move this out of if statement.
+    $area->{_bg_color_index} = 0x08;
+
+    # Set the chart background colour.
+    if ( defined $arg{color} ) {
+        my ( $index, $rgb ) = $self->_get_color_indices( $arg{color} );
+        if ( defined $index ) {
+            $area->{_fg_color_index} = $index;
+            $area->{_fg_color_rgb}   = $rgb;
+            $area->{_bg_color_index} = 0x08;
+            $area->{_bg_color_rgb}   = 0x000000;
+        }
+    }
+
+    # Set the border line colour.
+    if ( defined $arg{line_color} ) {
+        my ( $index, $rgb ) = $self->_get_color_indices( $arg{line_color} );
+        if ( defined $index ) {
+            $area->{_line_color_index} = $index;
+            $area->{_line_color_rgb}   = $rgb;
+        }
+    }
+
+    # Set the border line pattern.
+    if ( defined $arg{line_pattern} ) {
+        my $pattern = $self->_get_line_pattern( $arg{line_pattern} );
+        $area->{_line_pattern} = $pattern;
+    }
+
+    # Set the border line weight.
+    if ( defined $arg{line_weight} ) {
+        my $weight = $self->_get_line_weight( $arg{line_weight} );
+        $area->{_line_weight} = $weight;
+    }
+}
+
+
+###############################################################################
+#
+# set_chartarea()
+#
+# Set the properties of the chart chartarea.
+#
+sub set_chartarea {
+
+    my $self = shift;
+    my %arg  = @_;
+    return unless keys %arg;
+
+    my $area = $self->{_chartarea};
+
+    # Embedded automatic line weight has a different default value.
+    $area->{_line_weight} = 0xFFFF if $self->{_embedded};
+
+
+    # Set the chart background colour.
+    if ( defined $arg{color} ) {
+        my ( $index, $rgb ) = $self->_get_color_indices( $arg{color} );
+        if ( defined $index ) {
+            $area->{_fg_color_index} = $index;
+            $area->{_fg_color_rgb}   = $rgb;
+            $area->{_bg_color_index} = 0x08;
+            $area->{_bg_color_rgb}   = 0x000000;
+            $area->{_area_pattern}   = 1;
+            $area->{_area_options}   = 0x0000 if $self->{_embedded};
+            $area->{_visible}        = 1;
+        }
+    }
+
+    # Set the border line colour.
+    if ( defined $arg{line_color} ) {
+        my ( $index, $rgb ) = $self->_get_color_indices( $arg{line_color} );
+        if ( defined $index ) {
+            $area->{_line_color_index} = $index;
+            $area->{_line_color_rgb}   = $rgb;
+            $area->{_line_pattern}     = 0x00;
+            $area->{_line_options}     = 0x0000;
+            $area->{_visible}          = 1;
+        }
+    }
+
+    # Set the border line pattern.
+    if ( defined $arg{line_pattern} ) {
+        my $pattern = $self->_get_line_pattern( $arg{line_pattern} );
+        $area->{_line_pattern}     = $pattern;
+        $area->{_line_options}     = 0x0000;
+        $area->{_line_color_index} = 0x4F if !defined $arg{line_color};
+        $area->{_visible}          = 1;
+    }
+
+    # Set the border line weight.
+    if ( defined $arg{line_weight} ) {
+        my $weight = $self->_get_line_weight( $arg{line_weight} );
+        $area->{_line_weight}      = $weight;
+        $area->{_line_options}     = 0x0000;
+        $area->{_line_pattern}     = 0x00 if !defined $arg{line_pattern};
+        $area->{_line_color_index} = 0x4F if !defined $arg{line_color};
+        $area->{_visible}          = 1;
     }
 }
 
@@ -328,9 +450,12 @@ sub _close {
     # Append the sheet dimensions
     $self->_store_dimensions();
 
-    # TODO add SINDEX record
+    # TODO add SINDEX and NUMBER records.
 
-    $self->_store_window2();
+    if ( !$self->{_embedded} ) {
+        $self->_store_window2();
+    }
+
     $self->_store_eof();
 }
 
@@ -347,7 +472,7 @@ sub _store_window2 {
 
     use integer;    # Avoid << shift bug in Perl 5.6.0 on HP-UX
 
-    my $self   = shift;
+    my $self = shift;
 
     my $record  = 0x023E;    # Record identifier
     my $length  = 0x000A;    # Number of bytes to follow
@@ -498,6 +623,173 @@ sub _encode_utf16 {
 
 ###############################################################################
 #
+# _get_color_indices()
+#
+# Convert the user specified colour index or string to an colour index and
+# RGB colour number.
+#
+sub _get_color_indices {
+
+    my $self  = shift;
+    my $color = shift;
+    my $index;
+    my $rgb;
+
+    return ( undef, undef ) if !defined $color;
+
+    my %colors = (
+        aqua    => 0x0F,
+        cyan    => 0x0F,
+        black   => 0x08,
+        blue    => 0x0C,
+        brown   => 0x10,
+        magenta => 0x0E,
+        fuchsia => 0x0E,
+        gray    => 0x17,
+        grey    => 0x17,
+        green   => 0x11,
+        lime    => 0x0B,
+        navy    => 0x12,
+        orange  => 0x35,
+        pink    => 0x21,
+        purple  => 0x14,
+        red     => 0x0A,
+        silver  => 0x16,
+        white   => 0x09,
+        yellow  => 0x0D,
+    );
+
+
+    # Check for the various supported colour index/name possibilities.
+    if ( exists $colors{$color} ) {
+
+        # Colour matches one of the supported colour names.
+        $index = $colors{$color};
+    }
+    elsif ( $color =~ m/\D/ ) {
+
+        # Return undef if $color is a string but not one of the supported ones.
+        return ( undef, undef );
+    }
+    elsif ( $color < 8 || $color > 63 ) {
+
+        # Return undef if index is out of range.
+        return ( undef, undef );
+    }
+    else {
+
+        # We should have a valid color index in a valid range.
+        $index = $color;
+    }
+
+    $rgb = $self->_get_color_rbg( $index );
+    return ( $index, $rgb );
+}
+
+
+###############################################################################
+#
+# _get_color_rbg()
+#
+# Get the RedGreenBlue number for the colour index from the Workbook palette.
+#
+sub _get_color_rbg {
+
+    my $self  = shift;
+    my $index = shift;
+
+    # Adjust colour index from 8-63 (user range) to 0-55 (Excel range).
+    $index -= 8;
+
+    my @red_green_blue = @{ $self->{_palette}->[$index] };
+    return unpack 'V', pack 'C*', @red_green_blue;
+}
+
+
+###############################################################################
+#
+# _get_line_pattern()
+#
+# Get the Excel chart index for line pattern that corresponds to the user
+# defined value.
+#
+sub _get_line_pattern {
+
+    my $self    = shift;
+    my $value   = lc shift;
+    my $default = 0;
+    my $pattern;
+
+    my %patterns = (
+        0              => 5,
+        1              => 0,
+        2              => 1,
+        3              => 2,
+        4              => 3,
+        5              => 4,
+        6              => 7,
+        7              => 6,
+        8              => 8,
+        'solid'        => 0,
+        'dash'         => 1,
+        'dot'          => 2,
+        'dash-dot'     => 3,
+        'dash-dot-dot' => 4,
+        'none'         => 5,
+        'dark-gray'    => 6,
+        'medium-gray'  => 7,
+        'light-gray'   => 8,
+    );
+
+    if ( exists $patterns{$value} ) {
+        $pattern = $patterns{$value};
+    }
+    else {
+        $pattern = $default;
+    }
+
+    return $pattern;
+}
+
+
+###############################################################################
+#
+# _get_line_weight()
+#
+# Get the Excel chart index for line weight that corresponds to the user
+# defined value.
+#
+sub _get_line_weight {
+
+    my $self    = shift;
+    my $value   = lc shift;
+    my $default = 0;
+    my $weight;
+
+    my %weights = (
+        1          => -1,
+        2          => 0,
+        3          => 1,
+        4          => 2,
+        'hairline' => -1,
+        'narrow'   => 0,
+        'medium'   => 1,
+        'wide'     => 2,
+    );
+
+    if ( exists $weights{$value} ) {
+        $weight = $weights{$value};
+    }
+    else {
+        $weight = $default;
+    }
+
+    return $weight;
+}
+
+
+###############################################################################
+#
 # _store_chart_stream()
 #
 # Store the CHART record and it's substreams.
@@ -513,10 +805,9 @@ sub _store_chart_stream {
     # Ignore SCL record for now.
     $self->_store_plotgrowth();
 
-    if ( $self->{_embedded} ) {
-        $self->_store_embedded_frame_stream();
+    if ( $self->{_chartarea}->{_visible} ) {
+        $self->_store_chartarea_frame_stream();
     }
-
 
     # Store SERIES stream for each series.
     my $index = 0;
@@ -771,8 +1062,11 @@ sub _store_axisparent_stream {
         $self->_store_y_axis_text_stream();
     }
 
-    $self->_store_plotarea();
-    $self->_store_frame_stream();
+    if ( $self->{_plotarea}->{_visible} ) {
+        $self->_store_plotarea();
+        $self->_store_plotarea_frame_stream();
+    }
+
     $self->_store_chartformat_stream();
     $self->_store_end();
 }
@@ -821,29 +1115,29 @@ sub _store_axis_values_stream {
 
 ###############################################################################
 #
-# _store_frame_stream()
+# _store_plotarea_frame_stream()
 #
-# Write the FRAME chart substream.
+# Write the FRAME chart substream for the plotarea.
 #
-sub _store_frame_stream {
+sub _store_plotarea_frame_stream {
 
     my $self = shift;
 
-    my $plotarea = $self->{_plotarea};
+    my $area = $self->{_plotarea};
 
     $self->_store_frame( 0x00, 0x03 );
     $self->_store_begin();
 
     $self->_store_lineformat(
-        $plotarea->{_border_color_rgb}, $plotarea->{_border_pattern},
-        $plotarea->{_border_weight},    $plotarea->{_border_options},
-        $plotarea->{_border_color_index}
+        $area->{_line_color_rgb}, $area->{_line_pattern},
+        $area->{_line_weight},    $area->{_line_options},
+        $area->{_line_color_index}
     );
 
     $self->_store_areaformat(
-        $plotarea->{_fg_color_rgb},   $plotarea->{_bg_color_rgb},
-        $plotarea->{_area_pattern},   $plotarea->{_area_options},
-        $plotarea->{_fg_color_index}, $plotarea->{_bg_color_index}
+        $area->{_fg_color_rgb},   $area->{_bg_color_rgb},
+        $area->{_area_pattern},   $area->{_area_options},
+        $area->{_fg_color_index}, $area->{_bg_color_index}
     );
 
     $self->_store_end();
@@ -852,18 +1146,31 @@ sub _store_frame_stream {
 
 ###############################################################################
 #
-# _store_embedded_frame_stream()
+# _store_chartarea_frame_stream()
 #
-# Write the FRAME chart substream for and embedded chart.
+# Write the FRAME chart substream for the chartarea.
 #
-sub _store_embedded_frame_stream {
+sub _store_chartarea_frame_stream {
 
     my $self = shift;
 
+    my $area = $self->{_chartarea};
+
     $self->_store_frame( 0x00, 0x02 );
     $self->_store_begin();
-    $self->_store_lineformat( 0x00000000, 0x0000, 0x0000, 0x0009, 0x004D );
-    $self->_store_areaformat( 0x00FFFFFF, 0x0000, 0x01, 0x01, 0x4E, 0x4D );
+
+    $self->_store_lineformat(
+        $area->{_line_color_rgb}, $area->{_line_pattern},
+        $area->{_line_weight},    $area->{_line_options},
+        $area->{_line_color_index}
+    );
+
+    $self->_store_areaformat(
+        $area->{_fg_color_rgb},   $area->{_bg_color_rgb},
+        $area->{_area_pattern},   $area->{_area_options},
+        $area->{_fg_color_index}, $area->{_bg_color_index}
+    );
+
     $self->_store_end();
 }
 
@@ -2065,19 +2372,34 @@ sub _set_default_properties {
         _vertical => 0,
     };
 
+    $self->{_chartarea} = {
+        _visible          => 0,
+        _fg_color_index   => 0x4E,
+        _fg_color_rgb     => 0xFFFFFF,
+        _bg_color_index   => 0x4D,
+        _bg_color_rgb     => 0x000000,
+        _area_pattern     => 0x0000,
+        _area_options     => 0x0000,
+        _line_pattern     => 0x0005,
+        _line_weight      => 0xFFFF,
+        _line_color_index => 0x4D,
+        _line_color_rgb   => 0x000000,
+        _line_options     => 0x0008,
+    };
+
     $self->{_plotarea} = {
-        _visible            => 1,
-        _fg_color_index     => 0x16,
-        _fg_color_rgb       => 0xC0C0C0,
-        _bg_color_index     => 0x4F,
-        _bg_color_rgb       => 0x000000,
-        _area_pattern       => 0x0001,
-        _area_options       => 0x0000,
-        _border_pattern     => 0x0000,
-        _border_weight      => 0x0000,
-        _border_color_index => 0x17,
-        _border_color_rgb   => 0x808080,
-        _border_options     => 0x0000,
+        _visible          => 1,
+        _fg_color_index   => 0x16,
+        _fg_color_rgb     => 0xC0C0C0,
+        _bg_color_index   => 0x4F,
+        _bg_color_rgb     => 0x000000,
+        _area_pattern     => 0x0001,
+        _area_options     => 0x0000,
+        _line_pattern     => 0x0000,
+        _line_weight      => 0x0000,
+        _line_color_index => 0x17,
+        _line_color_rgb   => 0x808080,
+        _line_options     => 0x0000,
     };
 }
 
@@ -2130,6 +2452,22 @@ sub _set_embedded_config_data {
     my $self = shift;
 
     $self->{_embedded} = 1;
+
+    $self->{_chartarea} = {
+        _visible          => 1,
+        _fg_color_index   => 0x4E,
+        _fg_color_rgb     => 0xFFFFFF,
+        _bg_color_index   => 0x4D,
+        _bg_color_rgb     => 0x000000,
+        _area_pattern     => 0x0001,
+        _area_options     => 0x0001,
+        _line_pattern     => 0x0000,
+        _line_weight      => 0x0000,
+        _line_color_index => 0x4D,
+        _line_color_rgb   => 0x000000,
+        _line_options     => 0x0009,
+    };
+
 
     #<<< Perltidy ignore this.
     $self->{_config} = {
@@ -2247,48 +2585,23 @@ With a Spreadsheet::WriteExcel chart object the C<add_series()> method is used t
 
 The properties that can be set are:
 
-    values        (required)
-    categories    (optional for most chart types)
-    name          (optional)
-    name_formula  (optional)
-
 =over
 
 =item * C<values>
 
-This is the most important property of a series and must be set for every chart object. It links the chart with the worksheet data that it displays.
-
-    $chart->add_series( values => '=Sheet1!$B$2:$B$10' );
-
-Note the format that should be used for the formula. The worksheet name must be specified (even for embedded charts) and the cell references must be "absolute" references, i.e., they must contain C<$> signs. This is the format that is required by Excel for chart references. You must also add the worksheet that you are referring to before you link to it, via the workbook C<add_worksheet()> method. See also L</Working with Cell Ranges>.
+This is the most important property of a series and must be set for every chart object. It links the chart with the worksheet data that it displays. Note the format that should be used for the formula. See L</Working with Cell Ranges>.
 
 =item * C<categories>
 
 This sets the chart category labels. The category is more or less the same as the X-axis. In most chart types the C<categories> property is optional and the chart will just assume a sequential series from C<1 .. n>.
 
-    $chart->add_series(
-        categories    => '=Sheet1!$A$2:$A$10',
-        values        => '=Sheet1!$B$2:$B$10',
-    );
-
 =item * C<name>
 
 Set the name for the series. The name is displayed in the chart legend and in the formula bar. The name property is optional and if it isn't supplied will default to C<Series 1 .. n>.
 
-    $chart->add_series(
-        ...
-        name          => 'Series name',
-    );
-
 =item * C<name_formula>
 
 Optional, can be used to link the name to a worksheet cell. See L</Chart names and links>.
-
-    $chart->add_series(
-        ...
-        name          => 'Series name',
-        name_formula  => '=Sheet1!$B$1',
-    );
 
 =back
 
@@ -2318,25 +2631,15 @@ The C<set_x_axis()> method is used to set properties of the X axis.
 
 The properties that can be set are:
 
-    name          (optional)
-    name_formula  (optional)
-
 =over
 
 =item * C<name>
 
 Set the name (title or caption) for the axis. The name is displayed below the X axis. This property is optional. The default is to have no axis name.
 
-    $chart->set_x_axis( name => 'Sample length (m)' );
-
 =item * C<name_formula>
 
 Optional, can be used to link the name to a worksheet cell. See L</Chart names and links>.
-
-    $chart->set_x_axis(
-        name          => 'Sample length (m)',
-        name_formula  => '=Sheet1!$A$1',
-    );
 
 =back
 
@@ -2351,25 +2654,15 @@ The C<set_y_axis()> method is used to set properties of the Y axis.
 
 The properties that can be set are:
 
-    name          (optional)
-    name_formula  (optional)
-
 =over
 
 =item * C<name>
 
 Set the name (title or caption) for the axis. The name is displayed to the left of the Y axis. This property is optional. The default is to have no axis name.
 
-    $chart->set_y_axis( name => 'Sample weight (kg)' );
-
 =item * C<name_formula>
 
 Optional, can be used to link the name to a worksheet cell. See L</Chart names and links>.
-
-    $chart->set_y_axis(
-        name          => 'Sample weight (kg)',
-        name_formula  => '=Sheet1!$B$1',
-    );
 
 =back
 
@@ -2383,25 +2676,15 @@ The C<set_title()> method is used to set properties of the chart title.
 
 The properties that can be set are:
 
-    name          (optional)
-    name_formula  (optional)
-
 =over
 
 =item * C<name>
 
 Set the name (title) for the chart. The name is displayed above the chart. This property is optional. The default is to have no chart title.
 
-    $chart->set_title( name => 'Year End Results' );
-
 =item * C<name_formula>
 
 Optional, can be used to link the name to a worksheet cell. See L</Chart names and links>.
-
-    $chart->set_title(
-        name          => 'Year End Results',
-        name_formula  => '=Sheet1!$C$1',
-    );
 
 =back
 
@@ -2413,8 +2696,6 @@ The C<set_legend()> method is used to set properties of the chart legend.
     $chart->set_legend( position => 'none' );
 
 The properties that can be set are:
-
-    position      (optional)
 
 =over
 
@@ -2432,6 +2713,84 @@ The default legend position is C<bottom>. The currently supported chart position
 The other legend positions will be added soon.
 
 =back
+
+
+=head2 set_chartarea()
+
+The C<set_chartarea()> method is used to set the properties of the chart area. In Excel the chart area is the background area behind the chart.
+
+The properties that can be set are:
+
+=over
+
+=item * C<color>
+
+Set the colour of the chart area. The Excel default chart area color is 'white', index 9. See L</Chart object colours>.
+
+=item * C<line_color>
+
+Set the colour of the chart area border line. The Excel default border line colour is 'black', index 9.  See L</Chart object colours>.
+
+=item * C<line_pattern>
+
+Set the pattern of the of the chart area border line. The Excel default pattern is 'none', index 0 for a chart sheet and 'solid', index 1, for an embedded chart. See L</Chart line patterns>.
+
+=item * C<line_weight>
+
+Set the weight of the of the chart area border line. The Excel default weight is 'narrow', index 2. See L</Chart line weights>.
+
+=back
+
+Here is an example of setting several properties:
+
+    $chart->set_chartarea(
+        color        => 'red',
+        line_color   => 'black',
+        line_pattern => 2,
+        line_weight  => 3,
+    );
+
+Note, for chart sheets the chart area border is off by default. For embedded charts is is on by default.
+
+=head2 set_plotarea()
+
+The C<set_plotarea()> method is used to set properties of the plot area of a chart. In Excel the plot area is the area between the axes on which the chart series are plotted.
+
+The properties that can be set are:
+
+=over
+
+=item * C<visible>
+
+Set the visibility of the plot area. The default is 1 for visible. Set to 0 to hide the plot area and have the same colour as the background chart area.
+
+=item * C<color>
+
+Set the colour of the plot area. The Excel default plot area color is 'silver', index 23. See L</Chart object colours>.
+
+=item * C<line_color>
+
+Set the colour of the plot area border line. The Excel default border line colour is 'gray', index 22. See L</Chart object colours>.
+
+=item * C<line_pattern>
+
+Set the pattern of the of the plot area border line. The Excel default pattern is 'solid', index 1. See L</Chart line patterns>.
+
+=item * C<line_weight>
+
+Set the weight of the of the plot area border line. The Excel default weight is 'narrow', index 2. See L</Chart line weights>.
+
+=back
+
+Here is an example of setting several properties:
+
+    $chart->set_plotarea(
+        color        => 'red',
+        line_color   => 'black',
+        line_pattern => 2,
+        line_weight  => 3,
+    );
+
 
 
 =head1 WORKSHEET METHODS
@@ -2462,7 +2821,7 @@ See L<Spreadsheet::WriteExcel> for a detailed explanation of these methods.
 
 =head1 EXAMPLE
 
-Here is a complete example that demonstrates most of the available features when creating a chart.
+Here is a complete example that demonstrates some of the available features when creating a chart.
 
     #!/usr/bin/perl -w
 
@@ -2519,6 +2878,67 @@ Here is a complete example that demonstrates most of the available features when
 <p><center><img src="http://homepage.eircom.net/~jmcnamara/perl/images/area1.jpg" width="527" height="320" alt="Chart example." /></center></p>
 
 =end html
+
+
+=head1 Chart object colours
+
+Many of the chart objects supported by Spreadsheet::WriteExcl allow the default colours to be changed. Excel provides a palette of 56 colours and in Spreadsheet::WriteExcel these colours are accessed via their palette index in the range 8..63.
+
+The most commonly used colours can be accessed by name or index.
+
+    black   =>   8,    green    =>  17,    navy     =>  18,
+    white   =>   9,    orange   =>  53,    pink     =>  33,
+    red     =>  10,    gray     =>  23,    purple   =>  20,
+    blue    =>  12,    lime     =>  11,    silver   =>  22,
+    yellow  =>  13,    cyan     =>  15,
+    brown   =>  16,    magenta  =>  14,
+
+For example the following are equivalent.
+
+    $chart->set_plotarea( color => 10    );
+    $chart->set_plotarea( color => 'red' );
+
+The colour palette is shown in C<palette.html> in the C<docs> directory  of the distro. An Excel version of the palette can be generated using C<colors.pl> in the C<examples> directory.
+
+User defined colours can be set using the C<set_custom_color()> workbook method. This and other aspects of using colours are discussed in the "Colours in Excel" section of the main Spreadsheet::WriteExcel documentation: L<http://search.cpan.org/dist/Spreadsheet-WriteExcel/lib/Spreadsheet/WriteExcel.pm#COLOURS_IN_EXCEL>.
+
+=head1 Chart line patterns
+
+Chart lines patterns can be set using either an index or a name:
+
+    $chart->set_plotarea( weight => 2      );
+    $chart->set_plotarea( weight => 'dash' );
+
+Chart lines have 9 possible patterns are follows:
+
+    'none'         => 0,
+    'solid'        => 1,
+    'dash'         => 2,
+    'dot'          => 3,
+    'dash-dot'     => 4,
+    'dash-dot-dot' => 5,
+    'medium-gray'  => 6,
+    'dark-gray'    => 7,
+    'light-gray'   => 8,
+
+The patterns 1-8 are shown in order in the drop down dialog boxes in Excel. The default pattern is 'solid', index 1.
+
+
+=head1 Chart line weights
+
+Chart lines weights can be set using either an index or a name:
+
+    $chart->set_plotarea( weight => 1          );
+    $chart->set_plotarea( weight => 'hairline' );
+
+Chart lines have 4 possible weights are follows:
+
+    'hairline' => 1,
+    'narrow'   => 2,
+    'medium'   => 3,
+    'wide'     => 4,
+
+The weights 1-4 are shown in order in the drop down dialog boxes in Excel. The default weight is 'narrow', index 2.
 
 
 =head1 Chart names and links
