@@ -24,4 +24,4 @@ requires:
 resources:
   repository: http://github.com/jmcnamara/spreadsheet-writeexcel
   x_MailingList: http://groups.google.com/group/spreadsheet-writeexcel
-version: 2.38
+version: 2.39

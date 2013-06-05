@@ -24,7 +24,7 @@ use Carp;
 use vars qw($VERSION @ISA);
 @ISA = qw(Exporter);
 
-$VERSION = '2.38';
+$VERSION = '2.39';
 
 ###############################################################################
 #
@@ -1397,6 +1397,7 @@ sub _initialize_hashes {
 
 __END__
 
+=encoding latin1
 
 =head1 NAME
 

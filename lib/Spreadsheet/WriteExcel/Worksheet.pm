@@ -24,7 +24,7 @@ use Spreadsheet::WriteExcel::Formula;
 use vars qw($VERSION @ISA);
 @ISA = qw(Spreadsheet::WriteExcel::BIFFwriter);
 
-$VERSION = '2.38';
+$VERSION = '2.39';
 
 ###############################################################################
 #
@@ -7619,6 +7619,7 @@ sub _pack_dv_formula {
 
 __END__
 
+=encoding latin1
 
 =head1 NAME
 
